@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SportFormat, type SportDto, type VenueDto } from '@sports-matchmaking/shared';
-import { DEMO_USER_ID } from '../src/config/demoUser';
+import { useAuth } from '../src/auth/AuthContext';
 import { apiClient } from '../src/lib/api';
 
 export default function CreateMatchScreen() {
+  const { user, loading: authLoading } = useAuth();
   const [sports, setSports] = useState<SportDto[]>([]);
   const [venues, setVenues] = useState<VenueDto[]>([]);
   const [sportId, setSportId] = useState('');
@@ -41,6 +42,10 @@ export default function CreateMatchScreen() {
 
   async function handleCreate() {
     setError('');
+    if (!user) {
+      setError('Login required to create a match.');
+      return;
+    }
     const parsedMaxPlayers = Number(maxPlayers);
     const parsedMinRating = minRating === '' ? undefined : Number(minRating);
     const parsedMaxRating = maxRating === '' ? undefined : Number(maxRating);
@@ -67,7 +72,6 @@ export default function CreateMatchScreen() {
       const match = await apiClient.createMatch({
         sportId,
         venueId,
-        createdByUserId: DEMO_USER_ID,
         title: title.trim(),
         description: description.trim() || undefined,
         format,
@@ -87,6 +91,7 @@ export default function CreateMatchScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Create Match</Text>
+      {!authLoading && !user ? <Text style={styles.error}>Login required to create a match.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading sports and venues...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -124,7 +129,7 @@ export default function CreateMatchScreen() {
       <TextInput style={styles.input} value={minRating} onChangeText={setMinRating} placeholder="Min rating" keyboardType="number-pad" />
       <TextInput style={styles.input} value={maxRating} onChangeText={setMaxRating} placeholder="Max rating" keyboardType="number-pad" />
 
-      <Pressable style={[styles.button, submitting && styles.buttonDisabled]} onPress={handleCreate} disabled={submitting}>
+      <Pressable style={[styles.button, (submitting || !user) && styles.buttonDisabled]} onPress={handleCreate} disabled={submitting || !user}>
         <Text style={styles.buttonText}>{submitting ? 'Creating...' : 'Create Match'}</Text>
       </Pressable>
     </ScrollView>

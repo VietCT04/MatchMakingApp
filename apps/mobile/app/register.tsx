@@ -1,23 +1,24 @@
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../src/auth/AuthContext';
 
-export default function LoginScreen() {
-  const { login } = useAuth();
-  const [email, setEmail] = useState('alex@example.com');
-  const [password, setPassword] = useState('password123');
+export default function RegisterScreen() {
+  const { register } = useAuth();
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleLogin() {
+  async function handleRegister() {
     setSubmitting(true);
     setError('');
     try {
-      await login(email, password);
+      await register(email, password, displayName);
       router.replace('/');
-    } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Login failed.');
+    } catch (registerError) {
+      setError(registerError instanceof Error ? registerError.message : 'Registration failed.');
     } finally {
       setSubmitting(false);
     }
@@ -25,14 +26,14 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Register</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} placeholder="Display name" />
       <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" />
       <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
-      <Pressable style={styles.button} disabled={submitting} onPress={handleLogin}>
-        <Text style={styles.buttonText}>{submitting ? 'Logging in...' : 'Login'}</Text>
+      <Pressable style={styles.button} disabled={submitting} onPress={handleRegister}>
+        <Text style={styles.buttonText}>{submitting ? 'Creating...' : 'Create account'}</Text>
       </Pressable>
-      <Link href="/register" style={styles.link}>Create account</Link>
     </View>
   );
 }
@@ -43,6 +44,5 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#d0d7e2', borderRadius: 8, padding: 12 },
   button: { backgroundColor: '#1f4ad3', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '700' },
-  link: { color: '#1f4ad3' },
   error: { color: '#b42318' },
 });

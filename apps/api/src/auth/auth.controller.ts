@@ -1,28 +1,28 @@
-import { Body, Controller, Post } from '@nestjs/common';
-
-class AuthPlaceholderDto {
-  email!: string;
-  password!: string;
-}
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto.login';
+import { RegisterDto } from './dto.register';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
+import { AuthUser } from './auth-user';
 
 @Controller('auth')
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
   @Post('login')
-  login(@Body() dto: AuthPlaceholderDto) {
-    return {
-      message: 'Authentication is not implemented yet.',
-      userEmail: dto.email,
-      token: 'todo-replace-with-real-jwt',
-      todo: 'Integrate real auth provider (e.g. Clerk, Auth0, Cognito) and secure JWT flow.',
-    };
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 
   @Post('register')
-  register(@Body() dto: AuthPlaceholderDto) {
-    return {
-      message: 'Registration placeholder accepted.',
-      userEmail: dto.email,
-      todo: 'Implement password policy, email verification, and account recovery.',
-    };
+  register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@CurrentUser() user: AuthUser) {
+    return this.authService.findMe(user.id);
   }
 }

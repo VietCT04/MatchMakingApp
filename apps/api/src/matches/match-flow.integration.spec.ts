@@ -44,7 +44,7 @@ describe('MVP match flow integration', () => {
       teamBScore: 15,
     });
 
-    await ratingsService.verifyMatchResult(match.id, result.id);
+    await ratingsService.verifyMatchResult(match.id, result.id, userBId);
 
     const completedMatch = await prisma.match.findUniqueOrThrow({ where: { id: match.id } });
     const ratingA = await getRating(userAId);
@@ -98,9 +98,9 @@ describe('MVP match flow integration', () => {
       teamBScore: 15,
     });
 
-    await ratingsService.verifyMatchResult(match.id, result.id);
+    await ratingsService.verifyMatchResult(match.id, result.id, userBId);
 
-    await expect(ratingsService.verifyMatchResult(match.id, result.id)).rejects.toBeInstanceOf(ConflictException);
+    await expect(ratingsService.verifyMatchResult(match.id, result.id, userBId)).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('rejects invalid negative scores through DTO validation', async () => {

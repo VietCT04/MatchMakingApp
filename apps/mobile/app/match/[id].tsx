@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MatchStatus, MatchParticipantStatus, Team, type MatchResultDto, type MatchWithDetailsDto } from '@sports-matchmaking/shared';
-import { DEMO_USER_ID } from '../../src/config/demoUser';
+import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
 
 export default function MatchDetailScreen() {
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [match, setMatch] = useState<MatchWithDetailsDto | null>(null);
   const [pendingResult, setPendingResult] = useState<MatchResultDto | null>(null);
@@ -41,7 +42,7 @@ export default function MatchDetailScreen() {
     () => match?.participants?.filter((item) => item.status === MatchParticipantStatus.JOINED) ?? [],
     [match],
   );
-  const currentParticipant = joinedParticipants.find((item) => item.userId === DEMO_USER_ID);
+  const currentParticipant = joinedParticipants.find((item) => item.userId === user?.id);
   const canJoin = match?.status === MatchStatus.OPEN && !currentParticipant;
   const canLeave = Boolean(currentParticipant) && match?.status !== MatchStatus.COMPLETED;
 
@@ -61,6 +62,10 @@ export default function MatchDetailScreen() {
   }
 
   async function submitResult() {
+    if (!user) {
+      setError('Login required to submit results.');
+      return;
+    }
     const parsedA = Number(teamAScore);
     const parsedB = Number(teamBScore);
     if (!Number.isInteger(parsedA) || !Number.isInteger(parsedB) || parsedA < 0 || parsedB < 0) {
@@ -71,7 +76,6 @@ export default function MatchDetailScreen() {
     await runAction(
       async () => {
         const result = await apiClient.submitMatchResult(matchId, {
-          submittedByUserId: DEMO_USER_ID,
           teamAScore: parsedA,
           teamBScore: parsedB,
         });
@@ -87,18 +91,7 @@ export default function MatchDetailScreen() {
       setError('Submit a result before verifying.');
       return;
     }
-    await runAction(() => apiClient.verifyMatchResult(matchId, resultId, DEMO_USER_ID), 'Result verified and ratings updated.');
-  }
-
-  async function addDemoOpponent() {
-    await runAction(async () => {
-      const users = await apiClient.getUsers();
-      const opponent = users.find((user) => user.id !== DEMO_USER_ID);
-      if (!opponent) {
-        throw new Error('No seeded opponent user found.');
-      }
-      await apiClient.joinMatch(matchId, opponent.id, Team.B);
-    }, 'Seeded opponent joined team B.');
+    await runAction(() => apiClient.verifyMatchResult(matchId, resultId), 'Result verified and ratings updated.');
   }
 
   return (
@@ -124,7 +117,7 @@ export default function MatchDetailScreen() {
             {joinedParticipants.length === 0 ? <Text style={styles.muted}>No joined participants yet.</Text> : null}
             {joinedParticipants.map((participant) => (
               <Text key={participant.id} style={styles.line}>
-                {participant.userId === DEMO_USER_ID ? 'Demo user' : participant.userId} | Team {participant.team}
+                {participant.userId === user?.id ? 'You' : participant.userId} | Team {participant.team}
               </Text>
             ))}
           </View>
@@ -132,22 +125,17 @@ export default function MatchDetailScreen() {
           <View style={styles.actionRow}>
             {canJoin ? (
               <>
-                <Pressable style={styles.button} disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, DEMO_USER_ID, Team.A), 'Joined team A.')}>
+                <Pressable style={styles.button} disabled={busy || !user} onPress={() => runAction(() => apiClient.joinMatch(match.id, undefined, Team.A), 'Joined team A.')}>
                   <Text style={styles.buttonText}>Join A</Text>
                 </Pressable>
-                <Pressable style={styles.button} disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, DEMO_USER_ID, Team.B), 'Joined team B.')}>
+                <Pressable style={styles.button} disabled={busy || !user} onPress={() => runAction(() => apiClient.joinMatch(match.id, undefined, Team.B), 'Joined team B.')}>
                   <Text style={styles.buttonText}>Join B</Text>
                 </Pressable>
               </>
             ) : null}
             {canLeave ? (
-              <Pressable style={styles.secondaryButton} disabled={busy} onPress={() => runAction(() => apiClient.leaveMatch(match.id, DEMO_USER_ID), 'Left match.')}>
+              <Pressable style={styles.secondaryButton} disabled={busy} onPress={() => runAction(() => apiClient.leaveMatch(match.id), 'Left match.')}>
                 <Text style={styles.secondaryButtonText}>Leave</Text>
-              </Pressable>
-            ) : null}
-            {currentParticipant && !joinedParticipants.some((participant) => participant.team === Team.B) ? (
-              <Pressable style={styles.secondaryButton} disabled={busy} onPress={addDemoOpponent}>
-                <Text style={styles.secondaryButtonText}>Add Demo Opponent</Text>
               </Pressable>
             ) : null}
           </View>

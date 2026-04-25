@@ -15,7 +15,7 @@ Create a reliable sports matchmaking platform for racket sports where players ca
 - Other racket sports (expandable catalog)
 
 ## MVP User Stories
-- As a player, I can create an account/profile (placeholder auth currently).
+- As a player, I can create an account/profile with email/password JWT auth.
 - As a player, I can set my profile details and preferred sports.
 - As a player, I can discover open matches.
 - As a player, I can create a match with basic constraints.
@@ -25,7 +25,7 @@ Create a reliable sports matchmaking platform for racket sports where players ca
 
 ## Core Flows
 - Onboarding
-  - User signs up/logs in (currently placeholder).
+  - User signs up/logs in with email/password.
 - Profile setup
   - User sets display name, bio, location text.
 - Discover matches

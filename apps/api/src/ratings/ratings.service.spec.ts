@@ -62,7 +62,7 @@ describe('RatingsService', () => {
     };
     const service = new RatingsService(prisma as any);
 
-    const response = await service.verifyMatchResult('match-1', 'result-1');
+    const response = await service.verifyMatchResult('match-1', 'result-1', 'user-b');
 
     expect(response.result.verified).toBe(true);
     expect(tx.userSportRating.update).toHaveBeenCalledTimes(2);
@@ -71,5 +71,26 @@ describe('RatingsService', () => {
       where: { id: 'match-1' },
       data: { status: MatchStatus.COMPLETED },
     });
+  });
+
+  it('rejects verification by the result submitter', async () => {
+    const tx = {
+      matchResult: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'result-1',
+          matchId: 'match-1',
+          submittedByUserId: 'user-a',
+          verified: false,
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(tx)),
+    };
+    const service = new RatingsService(prisma as any);
+
+    await expect(service.verifyMatchResult('match-1', 'result-1', 'user-a')).rejects.toThrow(
+      'Result submitter cannot verify their own result',
+    );
   });
 });

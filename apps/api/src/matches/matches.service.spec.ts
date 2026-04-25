@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MatchParticipantStatus, MatchStatus } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
 import { MatchesService } from './matches.service';
@@ -71,5 +71,18 @@ describe('MatchesService', () => {
     await expect(service.join('match-1', { userId: 'user-1', team: Team.A })).rejects.toBeInstanceOf(
       ConflictException,
     );
+  });
+
+  it('requires result submitter to be a joined participant', async () => {
+    const { service } = createService({
+      id: 'match-1',
+      status: MatchStatus.OPEN,
+      maxPlayers: 4,
+      participants: [{ userId: 'user-2', status: MatchParticipantStatus.JOINED }],
+    });
+
+    await expect(
+      service.submitResultForUser('match-1', 'user-1', { teamAScore: 21, teamBScore: 15 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

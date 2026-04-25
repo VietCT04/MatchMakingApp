@@ -9,7 +9,7 @@ This repository contains the first MVP scaffold for a racket-sports matchmaking 
 - Backend has NestJS modules with REST CRUD skeletons for key resources.
 - Prisma schema is defined for users, sports, venues, matches, participation, results, and rating history.
 - Elo helper and unit tests exist for core rating math.
-- Auth, chat, push, maps, and payments are placeholders/TODO only.
+- Chat, push, maps, and payments are placeholders/TODO only. Auth is JWT-based for MVP.
 
 ## Tech Stack
 - Package manager: pnpm workspaces
@@ -61,12 +61,16 @@ sports-matchmaking/
   - `GET /ratings?userId=`
   - `POST /ratings/elo/preview`
   - `POST /ratings/elo/preview-doubles`
-- Auth placeholder endpoints:
+- Auth endpoints:
   - `POST /auth/login`
   - `POST /auth/register`
+  - `GET /auth/me`
+  - `GET /me`
+  - `GET /me/ratings`
+  - `GET /me/rating-history`
 - Mobile screens:
   - Home
-  - Login placeholder
+  - Login/register
   - Player profile
   - Match discovery
   - Create match
@@ -75,7 +79,7 @@ sports-matchmaking/
 - Mobile API client in `apps/mobile/src/lib/api.ts` calls the backend through centralized config.
 
 ## Incomplete Features
-- Real authentication and authorization.
+- Production auth hardening beyond MVP JWT.
 - Better result UX and verified-result permissions.
 - Real-time chat implementation (only TODO comments in UI).
 - Push notification integration.
@@ -95,9 +99,9 @@ sports-matchmaking/
 - Uses Expo Router file-based routes in `apps/mobile/app`.
 - API calls go through `src/lib/api.ts`; screens should not call `fetch` directly.
 - API base URL is centralized in `src/config/api.ts`.
-- Temporary demo user ID is centralized in `src/config/demoUser.ts`; replace with real auth later.
+- Access tokens are stored with Expo SecureStore.
+- Normal mobile flow uses authenticated `/me` data instead of the seeded demo user.
 - Discovery, create match, match detail, result submission/verification, ratings, and profile screens now call backend APIs directly.
-- Match detail has a temporary demo opponent helper that fetches seeded users and joins one non-demo user to team B for rating-flow testing.
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
 
@@ -133,19 +137,20 @@ sports-matchmaking/
 - Elo starts simple for speed and readability, with explicit upgrade path later.
 
 ## Known Limitations
-- Auth endpoints are mock responses and not secure.
+- Passwords are stored as bcrypt hashes; plaintext passwords are not stored.
+- Protected match write endpoints derive user identity from JWT.
 - No role-based access control.
 - No rate limiting or abuse protection yet.
 - Verified result flow automatically updates ratings and writes rating history.
 - Database-backed backend integration coverage exists for the MVP match flow.
-- Some lower-priority placeholder endpoints, especially auth, still need production validation and security hardening.
+- Auth is no longer placeholder, but still needs production hardening such as refresh/session revocation and email verification.
 
 ## Next Recommended Tasks
 1. Run and verify the committed migration against a clean local database.
-2. Add auth strategy (JWT/session), guard protected endpoints, and add user ownership checks.
-3. Improve mobile state/data handling (query caching, loading/error states).
-4. Add geolocation + nearby venue discovery.
-5. Add dispute and moderation rules for verified results.
+2. Improve mobile state/data handling (query caching, loading/error states).
+3. Add geolocation + nearby venue discovery.
+4. Add dispute and moderation rules for verified results.
+5. Add refresh tokens or session revocation before production.
 
 ## Local Development Commands
 From repo root:
@@ -195,5 +200,5 @@ pnpm typecheck
 - Do not hardcode API URLs inside screens.
 - Keep Elo logic isolated in the ratings service.
 - Keep the scaffold simple and extensible.
-- Do not implement payment, real auth, or chat unless specifically requested.
+- Do not implement payment, chat, maps, push notifications, or AI matchmaking unless specifically requested.
 - Update `CONTINUITY.md` after every major code change.

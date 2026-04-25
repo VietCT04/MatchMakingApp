@@ -57,7 +57,7 @@ docs             # Architecture, API, DB, roadmap, ADRs
 
 ## Future Architecture
 - Auth provider
-  - Replace placeholder auth endpoints with provider integration and JWT/session guards.
+  - Current MVP uses email/password JWT auth; a future provider can replace or augment it.
 - Push notifications
   - Add job/event pipeline for invites, reminders, and cancellations.
 - Realtime chat

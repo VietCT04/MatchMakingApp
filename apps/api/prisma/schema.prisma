@@ -34,6 +34,7 @@ enum Team {
 model User {
   id               String            @id @default(uuid())
   email            String            @unique
+  passwordHash     String?
   displayName      String
   bio              String?
   homeLocationText String?

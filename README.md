@@ -10,9 +10,9 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Upgradeable rating engine (start Elo, evolve later)
 
 ## Main Features (Current Scaffold)
-- Mobile screens for home, login placeholder, profile, discovery, create match, match details, and ratings
+- Mobile screens for home, login/register, profile, discovery, create match, match details, and ratings
 - API client abstraction connected to the backend for mobile
-- NestJS REST API with modules for users, sports, matches, ratings, venues, auth placeholder, and health
+- NestJS REST API with modules for users, sports, matches, ratings, venues, JWT auth, and health
 - Prisma schema for key relational entities
 - Elo helper utilities with unit tests
 
@@ -43,6 +43,8 @@ cp .env.example .env
 - `DATABASE_URL`
 - `PORT`
 - `EXPO_PUBLIC_API_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
 
 ## Running PostgreSQL
 ```bash
@@ -85,7 +87,7 @@ pnpm ios
 Mobile API configuration:
 - iOS simulator default: `EXPO_PUBLIC_API_URL=http://localhost:3000`
 - Physical device: set `EXPO_PUBLIC_API_URL` to your computer LAN URL, for example `http://192.168.1.50:3000`
-- Temporary demo user: `11111111-1111-4111-8111-111111111111` in `apps/mobile/src/config/demoUser.ts`
+- Access tokens are stored with Expo SecureStore.
 
 ## Running Tests
 From repo root:
@@ -148,7 +150,7 @@ pnpm typecheck
 - Phase 1: scaffold + CRUD skeleton (current)
 - Phase 2: robust DB-backed match discovery and filtering (partially implemented)
 - Phase 3: rating update workflow after verified results (partially implemented)
-- Phase 4: real auth and authorization
+- Phase 4: JWT auth and protected match writes (implemented)
 - Phase 5: location-based matching
 - Phase 6: realtime chat + notifications
 - Phase 7: payments + club tooling
@@ -167,10 +169,25 @@ pnpm typecheck
 - Match Discovery fetches open matches from the backend and supports simple sport filtering.
 - Create Match fetches sports/venues and posts to `POST /matches`.
 - Match Detail supports join, leave, submit result, verify result, and refreshes data after actions.
-- Match Detail includes a temporary demo opponent helper so a newly created match can be verified without real auth.
-- Ratings shows current demo user ratings and rating history.
-- Profile shows the seeded demo user and ratings summary.
-- Auth is still TODO; mobile uses the seeded demo user configured in `apps/mobile/src/config/demoUser.ts`.
+- Login/Register use `/auth/login` and `/auth/register`.
+- Authenticated API calls attach `Authorization: Bearer <token>`.
+- Create, join, leave, submit result, and verify result derive user identity from JWT.
+- Ratings uses `/me/ratings` and `/me/rating-history`.
+- Profile uses `/me`.
+
+## Auth Quick Test
+```bash
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"viet@example.com\",\"password\":\"password123\",\"displayName\":\"Viet\"}"
+
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"viet@example.com\",\"password\":\"password123\"}"
+
+curl http://localhost:3000/me \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
 
 ## Manual Match Flow Test
 After migration + seed, use the seeded records from `apps/api/prisma/seed.ts`.
@@ -186,14 +203,17 @@ Join, submit, and verify flow:
 
 ```bash
 curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/join \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d "{\"userId\":\"<USER_ID>\",\"team\":\"A\"}"
+  -d "{\"team\":\"A\"}"
 
 curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d "{\"submittedByUserId\":\"<PARTICIPANT_USER_ID>\",\"teamAScore\":21,\"teamBScore\":17}"
+  -d "{\"teamAScore\":21,\"teamBScore\":17}"
 
-curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results/<RESULT_ID>/verify
+curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results/<RESULT_ID>/verify \
+  -H "Authorization: Bearer <ACCESS_TOKEN_FOR_DIFFERENT_JOINED_PARTICIPANT>"
 ```
 
 Backend integration coverage for this flow lives in `apps/api/src/matches/match-flow.integration.spec.ts`.

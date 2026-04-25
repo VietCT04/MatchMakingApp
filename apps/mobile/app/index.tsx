@@ -1,8 +1,8 @@
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '../src/auth/AuthContext';
 
 const links = [
-  { href: '/login', label: 'Login Placeholder' },
   { href: '/profile', label: 'Player Profile' },
   { href: '/discover', label: 'Match Discovery' },
   { href: '/create-match', label: 'Create Match' },
@@ -11,15 +11,28 @@ const links = [
 ] as const;
 
 export default function HomeScreen() {
+  const { user, loading, logout } = useAuth();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sports Matchmaking MVP</Text>
-      <Text style={styles.subtitle}>Badminton, pickleball, tennis, and more.</Text>
+      <Text style={styles.subtitle}>{loading ? 'Loading session...' : user ? `Signed in as ${user.displayName}` : 'Sign in to create, join, and score matches.'}</Text>
+      {!loading && !user ? (
+        <>
+          <Link href="/login" style={styles.link}>Login</Link>
+          <Link href="/register" style={styles.link}>Register</Link>
+        </>
+      ) : null}
       {links.map((item) => (
         <Link key={item.href} href={item.href} style={styles.link}>
           {item.label}
         </Link>
       ))}
+      {user ? (
+        <Pressable style={styles.logout} onPress={logout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -49,5 +62,15 @@ const styles = StyleSheet.create({
     color: '#1f4ad3',
     borderWidth: 1,
     borderColor: '#d9dfee',
+  },
+  logout: {
+    backgroundColor: '#20304a',
+    borderRadius: 10,
+    padding: 14,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

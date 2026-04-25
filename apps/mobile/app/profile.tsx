@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RatingDto, UserDto } from '@sports-matchmaking/shared';
-import { DEMO_USER_ID } from '../src/config/demoUser';
+import { useAuth } from '../src/auth/AuthContext';
 import { apiClient } from '../src/lib/api';
 
 export default function ProfileScreen() {
+  const { user: authUser, loading: authLoading } = useAuth();
   const [user, setUser] = useState<UserDto | null>(null);
   const [ratings, setRatings] = useState<RatingDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,12 +13,16 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     async function loadProfile() {
+      if (!authUser) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError('');
       try {
         const [userResponse, ratingsResponse] = await Promise.all([
-          apiClient.getUserById(DEMO_USER_ID),
-          apiClient.getUserRatings(DEMO_USER_ID),
+          apiClient.getMe(),
+          apiClient.getUserRatings(),
         ]);
         setUser(userResponse);
         setRatings(ratingsResponse);
@@ -29,11 +34,12 @@ export default function ProfileScreen() {
     }
 
     loadProfile();
-  }, []);
+  }, [authUser]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Player Profile</Text>
+      {!authLoading && !authUser ? <Text style={styles.error}>Login required to view your profile.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading profile...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -56,7 +62,6 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      <Text style={styles.note}>TODO: replace demo user profile with real auth context.</Text>
     </ScrollView>
   );
 }

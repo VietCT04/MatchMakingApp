@@ -23,6 +23,7 @@ The schema models users, sports, ratings, venues, matches, participants, match r
 Fields:
 - `id` (uuid, PK)
 - `email` (unique)
+- `passwordHash` (nullable, bcrypt hash)
 - `displayName`
 - `bio` (nullable)
 - `homeLocationText` (nullable)
@@ -142,6 +143,7 @@ pnpm prisma:generate
 
 Committed migration:
 - `apps/api/prisma/migrations/20260425000100_init/migration.sql`
+- `apps/api/prisma/migrations/20260425000200_add_user_password_hash/migration.sql`
 
 ## Seed Data
 Implemented at `apps/api/prisma/seed.ts`.

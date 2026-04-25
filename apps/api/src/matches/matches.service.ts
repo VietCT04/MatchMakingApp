@@ -7,6 +7,9 @@ import { JoinMatchDto } from './dto.join-match';
 import { MatchQueryDto } from './dto.match-query';
 import { LeaveMatchDto } from './dto.leave-match';
 import { SubmitResultDto } from './dto.submit-result';
+import { CreateAuthenticatedMatchDto } from './dto.create-authenticated-match';
+import { JoinAuthenticatedMatchDto } from './dto.join-authenticated-match';
+import { SubmitAuthenticatedResultDto } from './dto.submit-authenticated-result';
 
 @Injectable()
 export class MatchesService {
@@ -61,6 +64,13 @@ export class MatchesService {
         minRating: dto.minRating,
         maxRating: dto.maxRating,
       },
+    });
+  }
+
+  createForUser(userId: string, dto: CreateAuthenticatedMatchDto) {
+    return this.create({
+      ...dto,
+      createdByUserId: userId,
     });
   }
 
@@ -138,6 +148,10 @@ export class MatchesService {
     return participant;
   }
 
+  joinForUser(matchId: string, userId: string, dto: JoinAuthenticatedMatchDto) {
+    return this.join(matchId, { userId, team: dto.team });
+  }
+
   async leave(matchId: string, dto: LeaveMatchDto) {
     const match = await this.findOne(matchId);
     const participant = match.participants.find((item) => item.userId === dto.userId);
@@ -159,6 +173,10 @@ export class MatchesService {
     }
 
     return updatedParticipant;
+  }
+
+  leaveForUser(matchId: string, userId: string) {
+    return this.leave(matchId, { userId });
   }
 
   async submitResult(matchId: string, dto: SubmitResultDto) {
@@ -189,6 +207,14 @@ export class MatchesService {
       }
       throw error;
     }
+  }
+
+  submitResultForUser(matchId: string, userId: string, dto: SubmitAuthenticatedResultDto) {
+    return this.submitResult(matchId, {
+      submittedByUserId: userId,
+      teamAScore: dto.teamAScore,
+      teamBScore: dto.teamBScore,
+    });
   }
 
   private validateRatingRange(minRating?: number, maxRating?: number): void {

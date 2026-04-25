@@ -13,10 +13,8 @@ Response:
 }
 ```
 
-## Auth Placeholder Endpoints
+## Auth Endpoints
 ### `POST /auth/login`
-Status: Placeholder implemented
-
 Request:
 ```json
 {
@@ -28,32 +26,48 @@ Request:
 Response:
 ```json
 {
-  "message": "Authentication is not implemented yet.",
-  "userEmail": "demo@sports.app",
-  "token": "todo-replace-with-real-jwt",
-  "todo": "Integrate real auth provider (e.g. Clerk, Auth0, Cognito) and secure JWT flow."
+  "accessToken": "jwt",
+  "user": {
+    "id": "uuid",
+    "email": "demo@sports.app",
+    "displayName": "Demo Player"
+  }
 }
 ```
 
 ### `POST /auth/register`
-Status: Placeholder implemented
-
 Request:
 ```json
 {
   "email": "demo@sports.app",
-  "password": "password123"
+  "password": "password123",
+  "displayName": "Demo Player"
 }
 ```
 
 Response:
 ```json
 {
-  "message": "Registration placeholder accepted.",
-  "userEmail": "demo@sports.app",
-  "todo": "Implement password policy, email verification, and account recovery."
+  "accessToken": "jwt",
+  "user": {
+    "id": "uuid",
+    "email": "demo@sports.app",
+    "displayName": "Demo Player"
+  }
 }
 ```
+
+### `GET /auth/me`
+Requires `Authorization: Bearer <token>`.
+
+### `GET /me`
+Requires `Authorization: Bearer <token>`.
+
+### `GET /me/ratings`
+Requires `Authorization: Bearer <token>`.
+
+### `GET /me/rating-history`
+Requires `Authorization: Bearer <token>`.
 
 ## Users Endpoints
 ### `GET /users`
@@ -136,12 +150,13 @@ Default behavior: returns `OPEN` matches unless `status` is provided.
 Returns single match with included `participants`, `sport`, and `venue`.
 
 ### `POST /matches`
+Requires `Authorization: Bearer <token>`.
+
 Example request:
 ```json
 {
   "sportId": "uuid",
   "venueId": "uuid",
-  "createdByUserId": "uuid",
   "title": "Saturday Doubles",
   "description": "Intermediate level",
   "format": "DOUBLES",
@@ -157,12 +172,14 @@ Example request:
 
 ### `POST /matches/:id/participants`
 Status: legacy alias for joining a match.
+Requires `Authorization: Bearer <token>`.
 
 ### `POST /matches/:id/join`
+Requires `Authorization: Bearer <token>`.
+
 Example request:
 ```json
 {
-  "userId": "uuid",
   "team": "UNKNOWN"
 }
 ```
@@ -174,11 +191,11 @@ Rules:
 - sets match status to `FULL` when capacity is reached
 
 ### `POST /matches/:id/leave`
+Requires `Authorization: Bearer <token>`.
+
 Example request:
 ```json
-{
-  "userId": "uuid"
-}
+{}
 ```
 
 Rules:
@@ -186,10 +203,11 @@ Rules:
 - reopens a `FULL` match to `OPEN` if space becomes available
 
 ### `POST /matches/:id/results`
+Requires `Authorization: Bearer <token>`.
+
 Example request:
 ```json
 {
-  "submittedByUserId": "uuid",
   "teamAScore": 21,
   "teamBScore": 17
 }
@@ -198,10 +216,13 @@ Example request:
 Response starts with `verified = false`.
 
 ### `POST /matches/:id/results/:resultId/verify`
+Requires `Authorization: Bearer <token>`.
 Verifies the submitted result, applies Elo updates, creates rating history rows, and sets match status to `COMPLETED`.
 
 Notes:
 - verification cannot run twice for the same result
+- verifier must be a joined participant
+- verifier cannot be the result submitter
 - Elo logic is implemented in `RatingsService`, not the controller
 
 ## Ratings Endpoints
@@ -267,7 +288,6 @@ Validation errors (from `ValidationPipe`) typically return:
 ```
 
 ## TODO API Endpoints
-- Auth-protected profile endpoint (current auth is placeholder)
 - Chat endpoints or realtime gateway contract
 - Notification preferences endpoints
 - Dedicated match-discovery endpoint if `GET /matches` filtering becomes too broad
@@ -281,4 +301,4 @@ Validation errors (from `ValidationPipe`) typically return:
 - Expo API base URL is configured in `apps/mobile/src/config/api.ts`.
 - iOS simulator can use `http://localhost:3000`.
 - Physical devices need `EXPO_PUBLIC_API_URL` set to the development computer LAN address.
-- Current mobile auth context is a seeded demo user in `apps/mobile/src/config/demoUser.ts`.
+- Current mobile auth context uses JWT tokens stored through Expo SecureStore.

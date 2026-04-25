@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RatingDto, RatingHistoryDto } from '@sports-matchmaking/shared';
-import { DEMO_USER_ID } from '../src/config/demoUser';
+import { useAuth } from '../src/auth/AuthContext';
 import { apiClient } from '../src/lib/api';
 
 export default function RatingsScreen() {
+  const { user, loading: authLoading } = useAuth();
   const [ratings, setRatings] = useState<RatingDto[]>([]);
   const [history, setHistory] = useState<RatingHistoryDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,12 +13,16 @@ export default function RatingsScreen() {
 
   useEffect(() => {
     async function loadRatings() {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError('');
       try {
         const [ratingsResponse, historyResponse] = await Promise.all([
-          apiClient.getUserRatings(DEMO_USER_ID),
-          apiClient.getUserRatingHistory(DEMO_USER_ID),
+          apiClient.getUserRatings(),
+          apiClient.getUserRatingHistory(),
         ]);
         setRatings(ratingsResponse);
         setHistory(historyResponse);
@@ -29,11 +34,12 @@ export default function RatingsScreen() {
     }
 
     loadRatings();
-  }, []);
+  }, [user]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Ratings</Text>
+      {!authLoading && !user ? <Text style={styles.error}>Login required to view ratings.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading ratings...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 

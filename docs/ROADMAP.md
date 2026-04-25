@@ -50,13 +50,13 @@ Apply rating changes automatically when a match result is verified.
 
 ## Phase 4: Authentication
 ### Goal
-Replace auth placeholders with real identity and authorization.
+Replace auth placeholders with real identity and authorization. MVP JWT authentication is implemented; production hardening remains.
 
 ### Tasks
-- Integrate auth provider.
-- Add JWT/session validation guards.
-- Protect create/join/update endpoints.
-- Add ownership checks.
+- Add JWT/session validation guards. Done for MVP access tokens.
+- Protect create/join/result endpoints. Done for core match flow.
+- Add ownership checks. Partially done for match participation and result verification.
+- Add refresh/session revocation, email verification, and password reset. TODO.
 
 ### Acceptance Criteria
 - Placeholder token removed.

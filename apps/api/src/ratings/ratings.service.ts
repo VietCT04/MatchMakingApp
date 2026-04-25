@@ -52,7 +52,7 @@ export class RatingsService {
     });
   }
 
-  async verifyMatchResult(matchId: string, resultId: string) {
+  async verifyMatchResult(matchId: string, resultId: string, verifierUserId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.matchResult.findUnique({ where: { id: resultId } });
       if (!result || result.matchId !== matchId) {
@@ -60,6 +60,9 @@ export class RatingsService {
       }
       if (result.verified) {
         throw new ConflictException('Match result is already verified');
+      }
+      if (verifierUserId && result.submittedByUserId === verifierUserId) {
+        throw new BadRequestException('Result submitter cannot verify their own result');
       }
 
       const match = await tx.match.findUnique({
@@ -77,6 +80,9 @@ export class RatingsService {
 
       const teamA = match.participants.filter((participant) => participant.team === Team.A);
       const teamB = match.participants.filter((participant) => participant.team === Team.B);
+      if (verifierUserId && !match.participants.some((participant) => participant.userId === verifierUserId)) {
+        throw new BadRequestException('Only joined participants can verify results');
+      }
       if (teamA.length === 0 || teamB.length === 0) {
         throw new BadRequestException('Verified results require joined participants on teams A and B');
       }

@@ -17,15 +17,16 @@
 - Avoid accepting unvalidated payloads.
 
 ## Auth Status
-- Current auth endpoints are placeholders only.
-- They do not provide real authentication security.
-- Do not treat placeholder token as a valid auth mechanism.
+- Auth is JWT-based for the MVP.
+- Passwords are hashed with bcrypt before storage.
+- Protected write endpoints derive identity from the token instead of trusting request body user IDs.
+- Mobile stores access tokens with Expo SecureStore.
 
 ## Future Auth Requirements (TODO)
-- Integrate production auth provider.
-- Add secure password/login or external IdP strategy.
-- Add JWT/session validation and rotation policy.
-- Add endpoint authorization and ownership checks.
+- Add refresh tokens or session revocation.
+- Add stronger production password policy and account recovery.
+- Add email verification.
+- Add role/permission model for organizers/admins.
 
 ## Rate Limiting (TODO)
 - Add request throttling for login, registration, and write endpoints.

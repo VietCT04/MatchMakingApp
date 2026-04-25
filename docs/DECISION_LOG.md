@@ -22,19 +22,19 @@ Follow-up:
 ## 2026-04-25: Connect Expo MVP flow to backend APIs
 
 Decision:
-- Use a single seeded demo user ID in `apps/mobile/src/config/demoUser.ts`.
+- Use a single seeded demo user ID in `apps/mobile/src/config/demoUser.ts` for the pre-auth MVP.
 - Keep API URL configuration in `apps/mobile/src/config/api.ts`.
 - Connect existing screens directly to backend APIs without adding Redux/Zustand.
 - Keep result submission and verification on the match detail screen for the MVP.
-- Add a temporary demo opponent helper that selects a non-demo seeded user from `/users` instead of hardcoding another user ID.
+- Add a temporary demo opponent helper for the pre-auth MVP.
 
 Reasoning:
 - The goal is to prove the complete match/rating loop before investing in app-wide auth or richer state management.
 - A single demo user keeps temporary auth assumptions visible and easy to remove.
-- The opponent helper lets the create -> join -> submit -> verify flow work before real auth and invitations exist.
+- Superseded by JWT auth: users should now login/register and join as themselves.
 
 Follow-up:
-- Replace demo user config with real auth context.
+- Superseded by JWT auth: normal mobile flow now uses real auth context.
 - Improve result UX, permissions, and dispute handling.
 - Add mobile component tests once the UI flow stabilizes.
 
@@ -53,3 +53,20 @@ Reasoning:
 Follow-up:
 - Run the integration suite against a clean local PostgreSQL database once package manager tooling is available.
 - Add auth/ownership checks before treating result verification as production-safe.
+
+## 2026-04-25: Add JWT authentication and protected match writes
+
+Decision:
+- Add `passwordHash` to `User` and store bcrypt hashes only.
+- Use JWT access tokens configured by `JWT_SECRET` and `JWT_EXPIRES_IN`.
+- Protect match write endpoints with a JWT guard.
+- Derive creator/participant/submitter/verifier identity from the token instead of request body IDs.
+- Store mobile access tokens in Expo SecureStore.
+
+Reasoning:
+- The main security hole was client-controlled `userId` values on write endpoints.
+- JWT keeps the MVP simple while enabling real authenticated match flows.
+
+Follow-up:
+- Add refresh tokens or session revocation before production.
+- Add email verification, password reset, and stronger abuse controls.

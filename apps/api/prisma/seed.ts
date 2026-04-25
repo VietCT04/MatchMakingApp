@@ -1,4 +1,6 @@
+import 'dotenv/config';
 import { PrismaClient, SportFormat, MatchStatus, Team, MatchParticipantStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -34,6 +36,7 @@ const demoUsers = [
 ];
 
 async function main(): Promise<void> {
+  const passwordHash = await bcrypt.hash('password123', 10);
   const sports = await Promise.all(
     ['badminton', 'pickleball', 'tennis'].map((name) =>
       prisma.sport.upsert({
@@ -88,8 +91,9 @@ async function main(): Promise<void> {
           displayName: user.displayName,
           bio: user.bio,
           homeLocationText: user.homeLocationText,
+          passwordHash,
         },
-        create: user,
+        create: { ...user, passwordHash },
       }),
     ),
   );
