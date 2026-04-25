@@ -1,0 +1,39 @@
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { RatingsService } from './ratings.service';
+
+class EloPreviewDto {
+  playerRating!: number;
+  opponentRating!: number;
+  actualScore!: number;
+}
+
+class DoublesPreviewDto {
+  teamARatings!: number[];
+  teamBRatings!: number[];
+  teamAActualScore!: number;
+}
+
+@Controller('ratings')
+export class RatingsController {
+  constructor(private readonly ratingsService: RatingsService) {}
+
+  @Get('defaults')
+  getDefaults() {
+    return this.ratingsService.getDefaults();
+  }
+
+  @Get()
+  list(@Query('userId') userId?: string) {
+    return this.ratingsService.listUserRatings(userId);
+  }
+
+  @Post('elo/preview')
+  preview(@Body() dto: EloPreviewDto) {
+    return this.ratingsService.previewUpdate(dto.playerRating, dto.opponentRating, dto.actualScore);
+  }
+
+  @Post('elo/preview-doubles')
+  previewDoubles(@Body() dto: DoublesPreviewDto) {
+    return this.ratingsService.previewDoublesUpdate(dto.teamARatings, dto.teamBRatings, dto.teamAActualScore);
+  }
+}

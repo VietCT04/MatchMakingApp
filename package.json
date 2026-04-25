@@ -1,0 +1,12 @@
+{
+  "name": "sports-matchmaking",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev:api": "pnpm --filter @sports-matchmaking/api start:dev",
+    "dev:mobile": "pnpm --filter @sports-matchmaking/mobile start",
+    "test": "pnpm --filter @sports-matchmaking/api test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

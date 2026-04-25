@@ -1,0 +1,11 @@
+node_modules
+.pnpm-store
+.DS_Store
+.env
+.env.local
+apps/mobile/.expo
+apps/mobile/dist
+apps/mobile/web-build
+apps/api/dist
+apps/api/node_modules
+coverage
