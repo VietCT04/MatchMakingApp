@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { MatchParticipantStatus, MatchStatus, Prisma, SportFormat, Team } from '@prisma/client';
+import { MatchParticipantStatus, Prisma, SportFormat, Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_RATING, teamAverageRating, updateRating } from './elo';
+import { DEFAULT_K_FACTOR, DEFAULT_RATING, teamAverageRating, updateRating } from './elo';
 
 @Injectable()
 export class RatingsService {
@@ -10,7 +10,7 @@ export class RatingsService {
   getDefaults() {
     return {
       defaultRating: DEFAULT_RATING,
-      kFactor: 32,
+      kFactor: DEFAULT_K_FACTOR,
     };
   }
 
@@ -110,11 +110,6 @@ export class RatingsService {
       const verifiedResult = await tx.matchResult.update({
         where: { id: resultId },
         data: { verified: true },
-      });
-
-      await tx.match.update({
-        where: { id: matchId },
-        data: { status: MatchStatus.COMPLETED },
       });
 
       return {

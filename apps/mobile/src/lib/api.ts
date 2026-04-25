@@ -12,15 +12,21 @@ import type {
 import { API_BASE_URL } from '../config/api';
 
 let accessToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
 }
 
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    readonly isUnauthorized = false,
   ) {
     super(message);
   }
@@ -42,26 +48,48 @@ export type SubmitMatchResultInput = {
   teamBScore: number;
 };
 
-export type AuthenticatedCreateMatchInput = Omit<CreateMatchInput, 'createdByUserId'>;
+type RequestOptions = {
+  skipAuth?: boolean;
+};
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export type AuthenticatedCreateMatchInput = CreateMatchInput;
+
+function buildHeaders(init?: RequestInit, options?: RequestOptions): Headers {
+  const headers = new Headers(init?.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (!options?.skipAuth && accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  return headers;
+}
+
+async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   let response: Response;
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...((init?.headers as Record<string, string> | undefined) ?? {}),
-      },
+      headers: buildHeaders(init, options),
     });
   } catch {
     throw new ApiError('Backend is offline or unreachable.');
   }
 
   if (!response.ok) {
-    throw new ApiError(await readErrorMessage(response), response.status);
+    const message = await readErrorMessage(response);
+    if (response.status === 401) {
+      unauthorizedHandler?.();
+      throw new ApiError(message || 'Session expired. Please log in again.', 401, true);
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
@@ -69,14 +97,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 async function readErrorMessage(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { message?: string | string[]; error?: string };
+    const body = (await response.json()) as {
+      message?: string | string[];
+      error?: string;
+      statusCode?: number;
+    };
     if (Array.isArray(body.message)) {
-      return body.message.join('\n');
+      return body.message.filter(Boolean).join('\n');
     }
-    return body.message ?? body.error ?? `Request failed with status ${response.status}`;
+    if (typeof body.message === 'string' && body.message.trim()) {
+      return body.message;
+    }
+    if (typeof body.error === 'string' && body.error.trim()) {
+      return body.error;
+    }
+    return defaultErrorMessage(response.status);
   } catch {
-    return `Request failed with status ${response.status}`;
+    return defaultErrorMessage(response.status);
   }
+}
+
+function defaultErrorMessage(status: number): string {
+  if (status === 401) {
+    return 'Session expired. Please log in again.';
+  }
+  if (status === 403) {
+    return 'You are not allowed to perform this action.';
+  }
+  if (status === 404) {
+    return 'Requested resource was not found.';
+  }
+  return `Request failed with status ${status}.`;
 }
 
 function toQuery(filters: MatchFilters): string {
@@ -94,18 +145,25 @@ export const apiClient = {
     return request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
-    });
+    }, { skipAuth: true });
   },
 
   login(payload: { email: string; password: string }): Promise<AuthResponse> {
     return request('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
-    });
+    }, { skipAuth: true });
   },
 
-  getMe(): Promise<UserDto> {
-    return request('/me');
+  async getMe(): Promise<UserDto> {
+    try {
+      return await request('/me');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return request('/auth/me');
+      }
+      throw error;
+    }
   },
 
   getSports(): Promise<SportDto[]> {
@@ -140,14 +198,14 @@ export const apiClient = {
     });
   },
 
-  joinMatch(matchId: string, _userId?: string, team = 'UNKNOWN') {
+  joinMatch(matchId: string, team = 'UNKNOWN') {
     return request(`/matches/${matchId}/join`, {
       method: 'POST',
       body: JSON.stringify({ team }),
     });
   },
 
-  leaveMatch(matchId: string, _userId?: string) {
+  leaveMatch(matchId: string) {
     return request(`/matches/${matchId}/leave`, {
       method: 'POST',
       body: JSON.stringify({}),
@@ -161,19 +219,19 @@ export const apiClient = {
     });
   },
 
-  verifyMatchResult(matchId: string, resultId: string, _userId?: string) {
+  verifyMatchResult(matchId: string, resultId: string) {
     return request(`/matches/${matchId}/results/${resultId}/verify`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
   },
 
-  getUserRatings(userId?: string): Promise<RatingDto[]> {
-    return request(userId ? `/users/${userId}/ratings` : '/me/ratings');
+  getUserRatings(): Promise<RatingDto[]> {
+    return request('/me/ratings');
   },
 
-  getUserRatingHistory(userId?: string): Promise<RatingHistoryDto[]> {
-    return request(userId ? `/users/${userId}/rating-history` : '/me/rating-history');
+  getUserRatingHistory(): Promise<RatingHistoryDto[]> {
+    return request('/me/rating-history');
   },
 };
 

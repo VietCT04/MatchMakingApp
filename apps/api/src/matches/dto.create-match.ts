@@ -10,9 +10,6 @@ export class CreateMatchDto {
   @IsUUID()
   venueId?: string;
 
-  @IsUUID()
-  createdByUserId!: string;
-
   @IsString()
   title!: string;
 

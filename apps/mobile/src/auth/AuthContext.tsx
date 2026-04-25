@@ -1,84 +1,105 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import type { UserDto } from '@sports-matchmaking/shared';
-import { apiClient, setAccessToken } from '../lib/api';
+import { ApiError, apiClient, setAccessToken, setUnauthorizedHandler } from '../lib/api';
 
 const TOKEN_KEY = 'sports-matchmaking.accessToken';
 
 type AuthContextValue = {
-  user: AuthSessionUser | null;
+  user: UserDto | null;
   token: string | null;
-  loading: boolean;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshMe: () => Promise<void>;
+  refreshMe: () => Promise<UserDto | null>;
 };
-
-type AuthSessionUser = Pick<UserDto, 'id' | 'email' | 'displayName'>;
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<AuthSessionUser | null>(null);
+  const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  async function clearSession() {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    setAccessToken(null);
+    setToken(null);
+    setUser(null);
+  }
+
+  async function persistToken(nextToken: string) {
+    await SecureStore.setItemAsync(TOKEN_KEY, nextToken);
+    setAccessToken(nextToken);
+    setToken(nextToken);
+  }
+
+  async function refreshMeInternal(): Promise<UserDto | null> {
+    try {
+      const me = await apiClient.getMe();
+      setUser(me);
+      return me;
+    } catch (error) {
+      if (error instanceof ApiError && error.isUnauthorized) {
+        await clearSession();
+        return null;
+      }
+      throw error;
+    }
+  }
 
   useEffect(() => {
-    async function restoreSession() {
-      const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
-      if (!storedToken) {
-        setLoading(false);
-        return;
-      }
+    setUnauthorizedHandler(() => {
+      clearSession().catch(() => undefined);
+    });
 
-      setAccessToken(storedToken);
-      setToken(storedToken);
+    async function restoreSession() {
       try {
-        setUser(await apiClient.getMe());
+        const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (!storedToken) {
+          return;
+        }
+        setAccessToken(storedToken);
+        setToken(storedToken);
+        await refreshMeInternal();
       } catch {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        setAccessToken(null);
-        setToken(null);
+        await clearSession();
       } finally {
-        setLoading(false);
+        setAuthLoading(false);
       }
     }
 
     restoreSession();
-  }, []);
 
-  async function persistSession(accessToken: string, nextUser: AuthSessionUser) {
-    await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-    setAccessToken(accessToken);
-    setToken(accessToken);
-    setUser(nextUser);
-  }
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       token,
-      loading,
+      authLoading,
       async login(email: string, password: string) {
         const response = await apiClient.login({ email, password });
-        await persistSession(response.accessToken, response.user);
+        await persistToken(response.accessToken);
+        await refreshMeInternal();
       },
       async register(email: string, password: string, displayName: string) {
         const response = await apiClient.register({ email, password, displayName });
-        await persistSession(response.accessToken, response.user);
+        await persistToken(response.accessToken);
+        await refreshMeInternal();
       },
       async logout() {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        setAccessToken(null);
-        setToken(null);
-        setUser(null);
+        await clearSession();
       },
       async refreshMe() {
-        setUser(await apiClient.getMe());
+        return refreshMeInternal();
       },
     }),
-    [loading, token, user],
+    [authLoading, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

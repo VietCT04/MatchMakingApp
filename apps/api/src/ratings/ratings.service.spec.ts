@@ -1,4 +1,4 @@
-import { MatchParticipantStatus, MatchStatus, SportFormat, Team } from '@prisma/client';
+import { MatchParticipantStatus, SportFormat, Team } from '@prisma/client';
 import { RatingsService } from './ratings.service';
 
 describe('RatingsService', () => {
@@ -27,7 +27,6 @@ describe('RatingsService', () => {
       },
       match: {
         findUnique: jest.fn().mockResolvedValue(match),
-        update: jest.fn().mockResolvedValue({ ...match, status: MatchStatus.COMPLETED }),
       },
       userSportRating: {
         upsert: jest
@@ -67,10 +66,6 @@ describe('RatingsService', () => {
     expect(response.result.verified).toBe(true);
     expect(tx.userSportRating.update).toHaveBeenCalledTimes(2);
     expect(tx.ratingHistory.create).toHaveBeenCalledTimes(2);
-    expect(tx.match.update).toHaveBeenCalledWith({
-      where: { id: 'match-1' },
-      data: { status: MatchStatus.COMPLETED },
-    });
   });
 
   it('rejects verification by the result submitter', async () => {

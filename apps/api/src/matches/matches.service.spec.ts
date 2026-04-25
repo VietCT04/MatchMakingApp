@@ -1,80 +1,83 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MatchParticipantStatus, MatchStatus } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
-import { MatchesService } from './matches.service';
+import { MatchLifecycleService } from './match-lifecycle.service';
+import { MatchParticipationService } from './match-participation.service';
+import { MatchQueryService } from './match-query.service';
+import { MatchResultSubmissionService } from './match-result-submission.service';
 
-function createService(match: any) {
+function createParticipationService(match: any) {
   const prisma = {
-    match: {
-      findUnique: jest.fn().mockResolvedValue(match),
-      update: jest.fn().mockResolvedValue({ ...match, status: MatchStatus.FULL }),
-    },
     matchParticipant: {
       upsert: jest.fn().mockResolvedValue({ id: 'participant-1', matchId: match.id, userId: 'user-1' }),
       update: jest.fn(),
-      create: jest.fn(),
     },
     matchResult: {
       create: jest.fn(),
     },
   };
+  const queryService = { findOne: jest.fn().mockResolvedValue(match) } as unknown as MatchQueryService;
+  const lifecycleService = {
+    setFull: jest.fn(),
+    setOpen: jest.fn(),
+  } as unknown as MatchLifecycleService;
 
   return {
     prisma,
-    service: new MatchesService(prisma as any),
+    queryService,
+    lifecycleService,
+    participationService: new MatchParticipationService(prisma as any, queryService, lifecycleService),
+    resultSubmissionService: new MatchResultSubmissionService(prisma as any, queryService),
   };
 }
 
-describe('MatchesService', () => {
+describe('Matches services', () => {
   it('joins a match and marks it full when max players is reached', async () => {
-    const { prisma, service } = createService({
+    const { prisma, lifecycleService, participationService } = createParticipationService({
       id: 'match-1',
       status: MatchStatus.OPEN,
       maxPlayers: 1,
       participants: [],
     });
 
-    await service.join('match-1', { userId: 'user-1', team: Team.A });
+    await participationService.join('match-1', 'user-1', { team: Team.A });
 
     expect(prisma.matchParticipant.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { matchId_userId: { matchId: 'match-1', userId: 'user-1' } },
       }),
     );
-    expect(prisma.match.update).toHaveBeenCalledWith({
-      where: { id: 'match-1' },
-      data: { status: MatchStatus.FULL },
-    });
+    expect(lifecycleService.setFull).toHaveBeenCalledWith('match-1');
   });
 
   it('prevents duplicate joins', async () => {
-    const { service } = createService({
+    const { participationService } = createParticipationService({
       id: 'match-1',
       status: MatchStatus.OPEN,
       maxPlayers: 4,
       participants: [{ userId: 'user-1', status: MatchParticipantStatus.JOINED }],
     });
 
-    await expect(service.join('match-1', { userId: 'user-1', team: Team.A })).rejects.toBeInstanceOf(
+    await expect(participationService.join('match-1', 'user-1', { team: Team.A })).rejects.toBeInstanceOf(
       ConflictException,
     );
   });
 
   it('prevents joining a full match', async () => {
-    const { service } = createService({
+    const { participationService } = createParticipationService({
       id: 'match-1',
       status: MatchStatus.OPEN,
       maxPlayers: 1,
       participants: [{ userId: 'user-2', status: MatchParticipantStatus.JOINED }],
     });
 
-    await expect(service.join('match-1', { userId: 'user-1', team: Team.A })).rejects.toBeInstanceOf(
+    await expect(participationService.join('match-1', 'user-1', { team: Team.A })).rejects.toBeInstanceOf(
       ConflictException,
     );
   });
 
   it('requires result submitter to be a joined participant', async () => {
-    const { service } = createService({
+    const { resultSubmissionService } = createParticipationService({
       id: 'match-1',
       status: MatchStatus.OPEN,
       maxPlayers: 4,
@@ -82,7 +85,7 @@ describe('MatchesService', () => {
     });
 
     await expect(
-      service.submitResultForUser('match-1', 'user-1', { teamAScore: 21, teamBScore: 15 }),
+      resultSubmissionService.submit('match-1', 'user-1', { teamAScore: 21, teamBScore: 15 }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

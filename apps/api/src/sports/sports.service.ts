@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { findOrThrow } from '../common/crud.utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSportDto } from './dto.create-sport';
 import { UpdateSportDto } from './dto.update-sport';
@@ -11,12 +12,11 @@ export class SportsService {
     return this.prisma.sport.findMany({ orderBy: { name: 'asc' } });
   }
 
-  async findOne(id: string) {
-    const sport = await this.prisma.sport.findUnique({ where: { id } });
-    if (!sport) {
-      throw new NotFoundException('Sport not found');
-    }
-    return sport;
+  findOne(id: string) {
+    return findOrThrow(
+      () => this.prisma.sport.findUnique({ where: { id } }),
+      'Sport not found',
+    );
   }
 
   create(dto: CreateSportDto) {

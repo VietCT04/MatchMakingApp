@@ -7,6 +7,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RatingsService } from '../ratings/ratings.service';
 import { MatchesService } from './matches.service';
 import { SubmitResultDto } from './dto.submit-result';
+import { MatchResultVerificationService } from './match-result-verification.service';
+import { MatchLifecycleService } from './match-lifecycle.service';
+import { MatchParticipationService } from './match-participation.service';
+import { MatchQueryService } from './match-query.service';
+import { MatchResultSubmissionService } from './match-result-submission.service';
 
 const sportId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const venueId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -19,8 +24,18 @@ const describeIntegration = hasDatabaseUrl ? describe : describe.skip;
 
 describeIntegration('MVP match flow integration', () => {
   const prisma = new PrismaService();
-  const matchesService = new MatchesService(prisma);
+  const queryService = new MatchQueryService(prisma);
+  const lifecycleService = new MatchLifecycleService(prisma, queryService);
+  const participationService = new MatchParticipationService(prisma, queryService, lifecycleService);
+  const resultSubmissionService = new MatchResultSubmissionService(prisma, queryService);
+  const matchesService = new MatchesService(
+    queryService,
+    lifecycleService,
+    participationService,
+    resultSubmissionService,
+  );
   const ratingsService = new RatingsService(prisma);
+  const verificationService = new MatchResultVerificationService(ratingsService, lifecycleService);
 
   beforeAll(async () => {
     await prisma.$connect();
@@ -39,15 +54,14 @@ describeIntegration('MVP match flow integration', () => {
   it('creates a match, joins users, verifies result, updates ratings, and writes rating history', async () => {
     const match = await createOpenMatch('ffffffff-ffff-4fff-8fff-ffffffffffff', 4);
 
-    await matchesService.join(match.id, { userId: userAId, team: Team.A });
-    await matchesService.join(match.id, { userId: userBId, team: Team.B });
-    const result = await matchesService.submitResult(match.id, {
-      submittedByUserId: userAId,
+    await matchesService.joinForUser(match.id, userAId, { team: Team.A });
+    await matchesService.joinForUser(match.id, userBId, { team: Team.B });
+    const result = await matchesService.submitResultForUser(match.id, userAId, {
       teamAScore: 21,
       teamBScore: 15,
     });
 
-    await ratingsService.verifyMatchResult(match.id, result.id, userBId);
+    await verificationService.verify(match.id, result.id, userBId);
 
     const completedMatch = await prisma.match.findUniqueOrThrow({ where: { id: match.id } });
     const ratingA = await getRating(userAId);
@@ -63,9 +77,9 @@ describeIntegration('MVP match flow integration', () => {
   it('rejects duplicate join', async () => {
     const match = await createOpenMatch('11111111-1111-4111-8111-111111111111', 4);
 
-    await matchesService.join(match.id, { userId: userAId, team: Team.A });
+    await matchesService.joinForUser(match.id, userAId, { team: Team.A });
 
-    await expect(matchesService.join(match.id, { userId: userAId, team: Team.A })).rejects.toBeInstanceOf(
+    await expect(matchesService.joinForUser(match.id, userAId, { team: Team.A })).rejects.toBeInstanceOf(
       ConflictException,
     );
   });
@@ -73,10 +87,10 @@ describeIntegration('MVP match flow integration', () => {
   it('rejects joining a full match', async () => {
     const match = await createOpenMatch('22222222-2222-4222-8222-222222222222', 2);
 
-    await matchesService.join(match.id, { userId: userAId, team: Team.A });
-    await matchesService.join(match.id, { userId: userBId, team: Team.B });
+    await matchesService.joinForUser(match.id, userAId, { team: Team.A });
+    await matchesService.joinForUser(match.id, userBId, { team: Team.B });
 
-    await expect(matchesService.join(match.id, { userId: userCId, team: Team.A })).rejects.toBeInstanceOf(
+    await expect(matchesService.joinForUser(match.id, userCId, { team: Team.A })).rejects.toBeInstanceOf(
       ConflictException,
     );
   });
@@ -85,7 +99,7 @@ describeIntegration('MVP match flow integration', () => {
     const match = await createOpenMatch('33333333-3333-4333-8333-333333333333', 4);
     await prisma.match.update({ where: { id: match.id }, data: { status: MatchStatus.COMPLETED } });
 
-    await expect(matchesService.join(match.id, { userId: userAId, team: Team.A })).rejects.toBeInstanceOf(
+    await expect(matchesService.joinForUser(match.id, userAId, { team: Team.A })).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
@@ -93,22 +107,22 @@ describeIntegration('MVP match flow integration', () => {
   it('rejects verifying a result twice', async () => {
     const match = await createOpenMatch('44444444-4444-4444-8444-444444444444', 4);
 
-    await matchesService.join(match.id, { userId: userAId, team: Team.A });
-    await matchesService.join(match.id, { userId: userBId, team: Team.B });
-    const result = await matchesService.submitResult(match.id, {
-      submittedByUserId: userAId,
+    await matchesService.joinForUser(match.id, userAId, { team: Team.A });
+    await matchesService.joinForUser(match.id, userBId, { team: Team.B });
+    const result = await matchesService.submitResultForUser(match.id, userAId, {
       teamAScore: 21,
       teamBScore: 15,
     });
 
-    await ratingsService.verifyMatchResult(match.id, result.id, userBId);
+    await verificationService.verify(match.id, result.id, userBId);
 
-    await expect(ratingsService.verifyMatchResult(match.id, result.id, userBId)).rejects.toBeInstanceOf(ConflictException);
+    await expect(verificationService.verify(match.id, result.id, userBId)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
   });
 
   it('rejects invalid negative scores through DTO validation', async () => {
     const dto = plainToInstance(SubmitResultDto, {
-      submittedByUserId: userAId,
       teamAScore: -1,
       teamBScore: 15,
     });
@@ -149,10 +163,9 @@ describeIntegration('MVP match flow integration', () => {
   }
 
   async function createOpenMatch(id: string, maxPlayers: number) {
-    return matchesService.create({
+    return matchesService.createForUser(userAId, {
       sportId,
       venueId,
-      createdByUserId: userAId,
       title: `Integration Match ${id}`,
       format: SportFormat.DOUBLES,
       startsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
@@ -183,9 +196,17 @@ describeIntegration('MVP match flow integration', () => {
       '44444444-4444-4444-8444-444444444444',
     ];
 
-    await prisma.ratingHistory.deleteMany({ where: { OR: [{ matchId: { in: matchIds } }, { userId: { in: [userAId, userBId, userCId] } }] } });
+    await prisma.ratingHistory.deleteMany({
+      where: {
+        OR: [{ matchId: { in: matchIds } }, { userId: { in: [userAId, userBId, userCId] } }],
+      },
+    });
     await prisma.matchResult.deleteMany({ where: { matchId: { in: matchIds } } });
-    await prisma.matchParticipant.deleteMany({ where: { OR: [{ matchId: { in: matchIds } }, { userId: { in: [userAId, userBId, userCId] } }] } });
+    await prisma.matchParticipant.deleteMany({
+      where: {
+        OR: [{ matchId: { in: matchIds } }, { userId: { in: [userAId, userBId, userCId] } }],
+      },
+    });
     await prisma.match.deleteMany({ where: { OR: [{ id: { in: matchIds } }, { sportId }] } });
     await prisma.userSportRating.deleteMany({ where: { OR: [{ sportId }, { userId: { in: [userAId, userBId, userCId] } }] } });
     await prisma.venue.deleteMany({ where: { id: venueId } });

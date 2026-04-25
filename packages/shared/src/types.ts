@@ -120,7 +120,6 @@ export interface RatingHistoryDto {
 export interface CreateMatchInput {
   sportId: string;
   venueId?: string;
-  createdByUserId: string;
   title: string;
   description?: string;
   format: SportFormat;

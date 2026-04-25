@@ -14,16 +14,15 @@ describe('MatchesController auth identity handling', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
-      addParticipant: jest.fn(),
     };
-    const ratingsService = {
-      verifyMatchResult: jest.fn(),
+    const verificationService = {
+      verify: jest.fn(),
     };
 
     return {
       matchesService,
-      ratingsService,
-      controller: new MatchesController(matchesService as any, ratingsService as any),
+      verificationService,
+      controller: new MatchesController(matchesService as any, verificationService as any),
     };
   }
 
@@ -45,7 +44,7 @@ describe('MatchesController auth identity handling', () => {
   it('joins as the JWT user, not a body userId', () => {
     const { controller, matchesService } = createController();
 
-    controller.join(authUser, 'match-id', { team: Team.A, userId: 'spoofed-user' } as any);
+    controller.join(authUser, 'match-id', { team: Team.A });
 
     expect(matchesService.joinForUser).toHaveBeenCalledWith('match-id', authUser.id, expect.objectContaining({ team: Team.A }));
   });
@@ -53,7 +52,7 @@ describe('MatchesController auth identity handling', () => {
   it('submits results as the JWT user', () => {
     const { controller, matchesService } = createController();
 
-    controller.submitResult(authUser, 'match-id', { teamAScore: 21, teamBScore: 15, submittedByUserId: 'spoofed-user' } as any);
+    controller.submitResult(authUser, 'match-id', { teamAScore: 21, teamBScore: 15 });
 
     expect(matchesService.submitResultForUser).toHaveBeenCalledWith(
       'match-id',
@@ -63,10 +62,10 @@ describe('MatchesController auth identity handling', () => {
   });
 
   it('verifies results as the JWT user', () => {
-    const { controller, ratingsService } = createController();
+    const { controller, verificationService } = createController();
 
-    controller.verifyResult(authUser, 'match-id', 'result-id', {});
+    controller.verifyResult(authUser, 'match-id', 'result-id');
 
-    expect(ratingsService.verifyMatchResult).toHaveBeenCalledWith('match-id', 'result-id', authUser.id);
+    expect(verificationService.verify).toHaveBeenCalledWith('match-id', 'result-id', authUser.id);
   });
 });

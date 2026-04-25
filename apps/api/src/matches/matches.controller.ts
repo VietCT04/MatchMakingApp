@@ -2,20 +2,19 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } f
 import { MatchesService } from './matches.service';
 import { UpdateMatchDto } from './dto.update-match';
 import { MatchQueryDto } from './dto.match-query';
-import { VerifyResultDto } from './dto.verify-result';
-import { RatingsService } from '../ratings/ratings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthUser } from '../auth/auth-user';
-import { CreateAuthenticatedMatchDto } from './dto.create-authenticated-match';
-import { JoinAuthenticatedMatchDto } from './dto.join-authenticated-match';
-import { SubmitAuthenticatedResultDto } from './dto.submit-authenticated-result';
+import { CreateMatchDto } from './dto.create-match';
+import { JoinMatchDto } from './dto.join-match';
+import { SubmitResultDto } from './dto.submit-result';
+import { MatchResultVerificationService } from './match-result-verification.service';
 
 @Controller('matches')
 export class MatchesController {
   constructor(
     private readonly matchesService: MatchesService,
-    private readonly ratingsService: RatingsService,
+    private readonly verificationService: MatchResultVerificationService,
   ) {}
 
   @Get()
@@ -30,7 +29,7 @@ export class MatchesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateAuthenticatedMatchDto) {
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateMatchDto) {
     return this.matchesService.createForUser(user.id, dto);
   }
 
@@ -44,15 +43,9 @@ export class MatchesController {
     return this.matchesService.remove(id);
   }
 
-  @Post(':id/participants')
-  @UseGuards(JwtAuthGuard)
-  addParticipant(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: JoinAuthenticatedMatchDto) {
-    return this.matchesService.joinForUser(id, user.id, dto);
-  }
-
   @Post(':id/join')
   @UseGuards(JwtAuthGuard)
-  join(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: JoinAuthenticatedMatchDto) {
+  join(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: JoinMatchDto) {
     return this.matchesService.joinForUser(id, user.id, dto);
   }
 
@@ -64,7 +57,7 @@ export class MatchesController {
 
   @Post(':id/results')
   @UseGuards(JwtAuthGuard)
-  submitResult(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SubmitAuthenticatedResultDto) {
+  submitResult(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SubmitResultDto) {
     return this.matchesService.submitResultForUser(id, user.id, dto);
   }
 
@@ -74,8 +67,7 @@ export class MatchesController {
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Param('resultId') resultId: string,
-    @Body() _dto: VerifyResultDto,
   ) {
-    return this.ratingsService.verifyMatchResult(id, resultId, user.id);
+    return this.verificationService.verify(id, resultId, user.id);
   }
 }
