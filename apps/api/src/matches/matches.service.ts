@@ -108,7 +108,7 @@ export class MatchesService {
   async join(matchId: string, dto: JoinMatchDto) {
     const match = await this.findOne(matchId);
 
-    if ([MatchStatus.CANCELLED, MatchStatus.COMPLETED].includes(match.status as MatchStatus)) {
+    if (match.status === MatchStatus.CANCELLED || match.status === MatchStatus.COMPLETED) {
       throw new BadRequestException('Cannot join a cancelled or completed match');
     }
 

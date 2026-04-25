@@ -7,9 +7,9 @@ export class JoinMatchDto {
 
   @IsOptional()
   @IsEnum(MatchParticipantStatus)
-  status: MatchParticipantStatus = MatchParticipantStatus.JOINED;
+  status?: MatchParticipantStatus = MatchParticipantStatus.JOINED;
 
   @IsOptional()
   @IsEnum(Team)
-  team: Team = Team.UNKNOWN;
+  team?: Team = Team.UNKNOWN;
 }

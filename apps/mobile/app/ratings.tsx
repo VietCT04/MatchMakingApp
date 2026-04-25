@@ -57,7 +57,12 @@ export default function RatingsScreen() {
       {!loading && !error && history.length === 0 ? <Text style={styles.muted}>No rating history yet.</Text> : null}
       {history.map((item) => (
         <View key={item.id} style={styles.card}>
-          <Text style={styles.cardTitle}>{item.oldRating} -> {item.newRating} ({item.delta >= 0 ? '+' : ''}{item.delta})</Text>
+          <Text style={styles.cardTitle}>
+            {item.oldRating}
+            {' -> '}
+            {item.newRating} ({item.delta >= 0 ? '+' : ''}
+            {item.delta})
+          </Text>
           <Text style={styles.line}>Match {item.matchId}</Text>
           <Text style={styles.line}>{new Date(item.createdAt).toLocaleString()}</Text>
         </View>

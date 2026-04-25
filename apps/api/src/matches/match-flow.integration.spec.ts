@@ -13,8 +13,11 @@ const venueId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const userAId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const userBId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const userCId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 
-describe('MVP match flow integration', () => {
+const describeIntegration = hasDatabaseUrl ? describe : describe.skip;
+
+describeIntegration('MVP match flow integration', () => {
   const prisma = new PrismaService();
   const matchesService = new MatchesService(prisma);
   const ratingsService = new RatingsService(prisma);
