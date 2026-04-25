@@ -1,17 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
-
-class EloPreviewDto {
-  playerRating!: number;
-  opponentRating!: number;
-  actualScore!: number;
-}
-
-class DoublesPreviewDto {
-  teamARatings!: number[];
-  teamBRatings!: number[];
-  teamAActualScore!: number;
-}
+import { EloPreviewDto } from './dto.elo-preview';
+import { DoublesPreviewDto } from './dto.doubles-preview';
 
 @Controller('ratings')
 export class RatingsController {

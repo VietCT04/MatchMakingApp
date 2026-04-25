@@ -6,6 +6,7 @@ import { JoinMatchDto } from './dto.join-match';
 import { MatchQueryDto } from './dto.match-query';
 import { LeaveMatchDto } from './dto.leave-match';
 import { SubmitResultDto } from './dto.submit-result';
+import { VerifyResultDto } from './dto.verify-result';
 import { RatingsService } from '../ratings/ratings.service';
 
 @Controller('matches')
@@ -61,7 +62,7 @@ export class MatchesController {
   }
 
   @Post(':id/results/:resultId/verify')
-  verifyResult(@Param('id') id: string, @Param('resultId') resultId: string) {
+  verifyResult(@Param('id') id: string, @Param('resultId') resultId: string, @Body() _dto: VerifyResultDto) {
     return this.ratingsService.verifyMatchResult(id, resultId);
   }
 }

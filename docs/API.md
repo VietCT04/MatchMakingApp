@@ -200,6 +200,10 @@ Response starts with `verified = false`.
 ### `POST /matches/:id/results/:resultId/verify`
 Verifies the submitted result, applies Elo updates, creates rating history rows, and sets match status to `COMPLETED`.
 
+Notes:
+- verification cannot run twice for the same result
+- Elo logic is implemented in `RatingsService`, not the controller
+
 ## Ratings Endpoints
 ### `GET /ratings/defaults`
 Response:

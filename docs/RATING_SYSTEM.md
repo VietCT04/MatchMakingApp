@@ -85,11 +85,13 @@ new = 1216
   - Elo helper math
   - Defaults endpoint
   - Preview endpoints
+  - Verified result flow updates current ratings
+  - Verified result flow creates `RatingHistory` rows
   - Unit tests (`elo.spec.ts`)
+  - Database-backed MVP flow integration coverage
 - TODO:
-  - Persist updates after verified match results
-  - Store full rating change records in `RatingHistory`
   - Add anti-abuse/review workflow for disputed results
+  - Add production permission checks around result verification
 
 ## Related Docs
 - [API](./API.md)

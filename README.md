@@ -56,6 +56,8 @@ pnpm prisma:migrate --name init
 pnpm prisma:generate
 ```
 
+The first committed migration is `20260425000100_init`.
+
 ## Seeding Demo Data
 ```bash
 cd apps/api
@@ -193,3 +195,5 @@ curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results 
 
 curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results/<RESULT_ID>/verify
 ```
+
+Backend integration coverage for this flow lives in `apps/api/src/matches/match-flow.integration.spec.ts`.

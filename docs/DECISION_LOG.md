@@ -37,3 +37,19 @@ Follow-up:
 - Replace demo user config with real auth context.
 - Improve result UX, permissions, and dispute handling.
 - Add mobile component tests once the UI flow stabilizes.
+
+## 2026-04-25: Stabilize MVP backend flow
+
+Decision:
+- Commit the first Prisma migration from the current schema as `20260425000100_init`.
+- Add database-backed integration coverage for the create -> join -> submit -> verify -> rating history flow.
+- Keep verified-result Elo updates inside `RatingsService`.
+- Add class-validator DTOs for Elo preview and verify-result request body validation.
+
+Reasoning:
+- The schema already matched the MVP data model, so no extra schema churn was needed.
+- Rating updates are domain logic, not HTTP logic, and should stay isolated for a future Glicko/TrueSkill upgrade.
+
+Follow-up:
+- Run the integration suite against a clean local PostgreSQL database once package manager tooling is available.
+- Add auth/ownership checks before treating result verification as production-safe.

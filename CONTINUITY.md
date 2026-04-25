@@ -106,7 +106,7 @@ sports-matchmaking/
 - PostgreSQL connection configured via `DATABASE_URL` env var.
 - Core entities and enums are defined and relationally linked.
 - Seed script exists at `apps/api/prisma/seed.ts`.
-- No migrations have been committed yet in this scaffold.
+- Initial Prisma migration is committed at `apps/api/prisma/migrations/20260425000100_init`.
 
 ## Rating System Notes
 - Elo constants:
@@ -136,17 +136,16 @@ sports-matchmaking/
 - Auth endpoints are mock responses and not secure.
 - No role-based access control.
 - No rate limiting or abuse protection yet.
-- Rating updates are not applied automatically from verified match results.
-- No dedicated integration/E2E test setup yet.
-- API DTO validation is inconsistent (some endpoints use inline classes without validators).
+- Verified result flow automatically updates ratings and writes rating history.
+- Database-backed backend integration coverage exists for the MVP match flow.
+- Some lower-priority placeholder endpoints, especially auth, still need production validation and security hardening.
 
 ## Next Recommended Tasks
-1. Add committed Prisma migration from the current schema.
-2. Add API integration tests for the full match flow against a test database.
-3. Add consistent DTO validation for ratings/auth payloads.
-4. Add auth strategy (JWT/session), guard protected endpoints, and add user ownership checks.
-5. Improve mobile state/data handling (query caching, loading/error states).
-6. Add geolocation + nearby venue discovery.
+1. Run and verify the committed migration against a clean local database.
+2. Add auth strategy (JWT/session), guard protected endpoints, and add user ownership checks.
+3. Improve mobile state/data handling (query caching, loading/error states).
+4. Add geolocation + nearby venue discovery.
+5. Add dispute and moderation rules for verified results.
 
 ## Local Development Commands
 From repo root:

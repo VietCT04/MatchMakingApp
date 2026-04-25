@@ -140,6 +140,9 @@ pnpm prisma:migrate --name init
 pnpm prisma:generate
 ```
 
+Committed migration:
+- `apps/api/prisma/migrations/20260425000100_init/migration.sql`
+
 ## Seed Data
 Implemented at `apps/api/prisma/seed.ts`.
 
