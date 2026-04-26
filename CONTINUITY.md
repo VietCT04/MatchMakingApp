@@ -116,7 +116,13 @@ sports-matchmaking/
 - Discover now requests ranked results for authenticated users and shows `NN% fit` labels on match cards.
 - Discover can also show reliability from ranked fit breakdown when present.
 - Mobile MVP UI is now demo-ready: home flow guidance, polished auth forms, clearer match cards, improved create-match form UX, grouped participants in match detail, clearer result verification messaging, grouped ratings display, and cleaner profile fallbacks.
-- Match detail includes trust/safety actions for no-show marking (creator-only, post-start), result disputes, and user reports.
+- Match detail has been redesigned into reusable sections:
+  - hero summary (title, sport/format, venue, date/time, status, rating range, fit/distance/reliability badges)
+  - status timeline (`OPEN -> FULL -> RESULT SUBMITTED -> VERIFIED/COMPLETED`, with cancelled state handling)
+  - team rosters (Team A, Team B, Unknown) with participant status and reliability badges
+  - clear main action panel (join/leave/completed states)
+  - explicit result workflow card (submit, verify, dispute states and rules)
+  - trust/safety panel (report, no-show, dispute actions with permissions)
 - Profile includes a reliability stats card (score, completions, cancellations, late cancellations, no-shows, disputes, reports).
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.

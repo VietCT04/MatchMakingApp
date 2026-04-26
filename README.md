@@ -193,7 +193,9 @@ pnpm typecheck
 - Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
 - Discover cards also show participant reliability (for ranked payloads) when available.
 - Create Match has sectioned form UX (sport, venue, format, details, date/time, rating range), helper text, backend error display, submit disabling, and success feedback.
-- Match Detail now highlights participant grouping (Team A/B/Unknown), participation state, participant reliability badges, trust/safety actions (no-show/report/dispute), and clearer pending/verified result messaging.
+- Match Detail has been redesigned with reusable sections (hero summary, status timeline, team rosters, action panel, result workflow card, and trust/safety panel).
+- Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
+- Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
 - Profile screen now has clean fallback text, a clearer ratings summary, and a reliability stats card.
 - Login/Register use `/auth/login` and `/auth/register`.

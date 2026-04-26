@@ -595,6 +595,15 @@ This section tracks what has been implemented from this review, and what is stil
   - creator-only no-show action after match start
   - dispute submitted result action for participants
   - report participant action (excluding current user)
+- [x] Completed Match Detail redesign with reusable match components:
+  - `MatchHeroCard`
+  - `MatchStatusTimeline`
+  - `TeamRosterCard`
+  - `ParticipantRow`
+  - `MatchResultCard`
+  - `MatchActionPanel`
+  - `TrustSafetyPanel`
+- [x] Result workflow UX now has clearer states (no result, pending verification, verified, disputed) and improved action visibility rules.
 - [x] Added reliability summary card on Profile screen.
 - [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 
@@ -606,7 +615,7 @@ This section tracks what has been implemented from this review, and what is stil
 - [ ] TanStack Query migration for data hooks and mutations.
 - [ ] Reanimated skeleton loading and motion polish.
 - [ ] Bottom-sheet filter/selector UX (`@gorhom/bottom-sheet`).
-- [ ] Match Detail full redesign with sticky action bar + timeline components.
+- [ ] Match Detail sticky action bar refinement (current redesign does not use sticky action positioning).
 - [ ] Ratings/Profile deeper componentization (`RatingCard`, `Avatar`, `StatCard`, trend indicators).
 - [ ] Toast layer for action feedback.
 - [ ] Full componentization pass for all existing screens (some screens are still mixed with local styles).
