@@ -29,6 +29,7 @@ describe('MatchRankingService', () => {
         distanceKm: 2,
         radiusKm: 10,
         userRating: 1250,
+        reliabilityScore: 95,
         minRating: 1200,
         maxRating: 1300,
         startsAt: new Date('2026-04-26T04:00:00.000Z'),
@@ -41,9 +42,45 @@ describe('MatchRankingService', () => {
     expect(result.fitBreakdown).toEqual({
       distanceScore: 80,
       ratingFitScore: 100,
+      reliabilityScore: 95,
       timeScore: 90,
       slotAvailabilityScore: 77.5,
     });
-    expect(result.fitScore).toBe(88.13);
+    expect(result.fitScore).toBe(89.75);
+  });
+
+  it('gives lower fit score when reliability is lower', () => {
+    const now = new Date('2026-04-26T00:00:00.000Z');
+    const highReliability = service.calculateFitScore(
+      {
+        distanceKm: 2,
+        radiusKm: 10,
+        userRating: 1250,
+        reliabilityScore: 95,
+        minRating: 1200,
+        maxRating: 1300,
+        startsAt: new Date('2026-04-26T04:00:00.000Z'),
+        participantCount: 2,
+        maxPlayers: 4,
+      },
+      now,
+    );
+    const lowReliability = service.calculateFitScore(
+      {
+        distanceKm: 2,
+        radiusKm: 10,
+        userRating: 1250,
+        reliabilityScore: 40,
+        minRating: 1200,
+        maxRating: 1300,
+        startsAt: new Date('2026-04-26T04:00:00.000Z'),
+        participantCount: 2,
+        maxPlayers: 4,
+      },
+      now,
+    );
+
+    expect(lowReliability.fitBreakdown.reliabilityScore).toBe(40);
+    expect(highReliability.fitScore).toBeGreaterThan(lowReliability.fitScore);
   });
 });

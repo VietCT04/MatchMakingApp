@@ -159,12 +159,13 @@ Ranked behavior:
 - If `ranked=true`, response includes `fitScore` and `fitBreakdown` per match and results are sorted by `fitScore` descending.
 - If JWT is present, ranking uses the authenticated user's rating for the match sport+format.
 - If JWT is absent (public discovery), ranking falls back to neutral/default rating behavior and still returns valid ranked output.
-- Ranking is rule-based (distance, rating fit, time, slot availability), not AI-driven.
+- Ranking is rule-based (distance, rating fit, participant reliability, time, slot availability), not AI-driven.
 
 Fit score formula (0-100):
-- `fitScore = distanceScore * 0.35 + ratingFitScore * 0.35 + timeScore * 0.15 + slotAvailabilityScore * 0.15`
+- `fitScore = distanceScore * 0.30 + ratingFitScore * 0.30 + reliabilityScore * 0.20 + timeScore * 0.10 + slotAvailabilityScore * 0.10`
 - `distanceScore`: linear drop from `100` at `0 km` to `0` at `radiusKm` (neutral `50` if no location).
 - `ratingFitScore`: `100` when inside match range; decays as user rating moves outside range; defaults to rating `1200` when missing.
+- `reliabilityScore`: average joined-participant reliability in the match; neutral `80` when no joined participants.
 - `timeScore`: future matches score higher; past matches do not appear in default `OPEN` discovery.
 - `slotAvailabilityScore`: higher when more slots are open; full matches do not appear in default `OPEN` discovery.
 
@@ -178,6 +179,7 @@ Ranked response shape example:
   "fitBreakdown": {
     "distanceScore": 88,
     "ratingFitScore": 100,
+    "reliabilityScore": 95,
     "timeScore": 90,
     "slotAvailabilityScore": 80
   }
@@ -245,6 +247,19 @@ Example request:
 Rules:
 - marks participant as `LEFT`
 - reopens a `FULL` match to `OPEN` if space becomes available
+- increments reliability cancellation stats
+- increments late-cancellation count if leaving within 2 hours before `startsAt` (MVP threshold)
+
+### `POST /matches/:id/participants/:participantId/no-show`
+Requires `Authorization: Bearer <token>`.
+
+Rules:
+- creator-only action (for now)
+- cannot mark before match start
+- cannot mark yourself as no-show
+- prevents duplicate no-show marking
+- updates participant status to `NO_SHOW`
+- updates target user's reliability stats
 
 ### `POST /matches/:id/results`
 Requires `Authorization: Bearer <token>`.
@@ -268,6 +283,68 @@ Notes:
 - verifier must be a joined participant
 - verifier cannot be the result submitter
 - Elo logic is implemented in `RatingsService`, not the controller
+- completed-match reliability stats increment for joined participants at verification time
+
+### `POST /matches/:id/results/:resultId/disputes`
+Requires `Authorization: Bearer <token>`.
+
+Request:
+```json
+{
+  "reason": "Score is incorrect"
+}
+```
+
+Rules:
+- only joined participants can dispute
+- same user cannot create duplicate dispute for the same result
+- reason is required and minimum length is 5
+- creates dispute with `OPEN` status
+
+## Reliability Endpoints
+### `GET /me/reliability`
+Requires `Authorization: Bearer <token>`.
+
+### `GET /users/:userId/reliability`
+Public endpoint for user reliability summary.
+
+Example response:
+```json
+{
+  "userId": "uuid",
+  "completedMatches": 3,
+  "cancelledMatches": 1,
+  "lateCancellationCount": 1,
+  "noShowCount": 0,
+  "disputedResults": 0,
+  "reportCount": 0,
+  "reliabilityScore": 95
+}
+```
+
+Reliability formula:
+- `reliabilityScore = clamp(0, 100, 100 - noShowCount*10 - lateCancellationCount*5 - disputedResults*5 - reportCount*3)`
+- Reliability is separate from Elo and does not affect rating history math.
+
+## Reports Endpoints
+### `POST /reports/users`
+Requires `Authorization: Bearer <token>`.
+
+Request:
+```json
+{
+  "reportedUserId": "uuid",
+  "matchId": "uuid-optional",
+  "reason": "No show without notice"
+}
+```
+
+Rules:
+- user cannot report themselves
+- reason is required and minimum length is 5
+- if `matchId` is provided, reporter must be a participant in that match
+- creates report with `OPEN` status
+- increments reported-user reliability report count
 
 ## Ratings Endpoints
 ### `GET /ratings/defaults`

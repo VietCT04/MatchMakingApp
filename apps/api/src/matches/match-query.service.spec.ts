@@ -13,15 +13,24 @@ function createMatch(
     maxRating?: number | null;
     maxPlayers?: number;
     joinedParticipants?: number;
+    reliabilityScores?: number[];
   },
 ) {
   const joinedParticipants = options?.joinedParticipants ?? 0;
+  const reliabilityScores = options?.reliabilityScores ?? [];
   const participants = Array.from({ length: joinedParticipants }, (_, index) => ({
     id: `${id}-p-${index + 1}`,
     userId: `user-${index + 1}`,
     matchId: id,
     status: 'JOINED',
     team: 'UNKNOWN',
+    user: {
+      id: `user-${index + 1}`,
+      displayName: `User ${index + 1}`,
+      reliabilityStats: {
+        reliabilityScore: reliabilityScores[index] ?? 100,
+      },
+    },
     createdAt: new Date(startsAt),
     updatedAt: new Date(startsAt),
   }));
@@ -144,18 +153,21 @@ describe('MatchQueryService nearby filtering', () => {
             maxRating: 1300,
             maxPlayers: 4,
             joinedParticipants: 3,
+            reliabilityScores: [82, 80, 78],
           }),
           createMatch('best', 1.3001, 103.8001, '2026-05-01T09:00:00.000Z', {
             minRating: 1200,
             maxRating: 1300,
             maxPlayers: 4,
             joinedParticipants: 1,
+            reliabilityScores: [95],
           }),
           createMatch('low', 1.3040, 103.8040, '2026-05-03T09:00:00.000Z', {
             minRating: 1700,
             maxRating: 1900,
             maxPlayers: 4,
             joinedParticipants: 3,
+            reliabilityScores: [45, 50, 48],
           }),
         ]),
       },
@@ -182,6 +194,8 @@ describe('MatchQueryService nearby filtering', () => {
     expect((result[1] as any).fitScore).toBeGreaterThanOrEqual((result[2] as any).fitScore);
     expect(result.map((match) => match.id)).toEqual(['best', 'medium', 'low']);
     expect(result.every((match) => 'fitBreakdown' in match)).toBe(true);
+    expect((result[0] as any).fitBreakdown.reliabilityScore).toBe(95);
+    expect((result[2] as any).fitBreakdown.reliabilityScore).toBeLessThan((result[0] as any).fitBreakdown.reliabilityScore);
   });
 
   it('returns ranked discovery without location params', async () => {

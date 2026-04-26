@@ -58,11 +58,13 @@ apps/mobile/app/
   - `MatchStatus`
   - `MatchParticipantStatus`
   - `Team`
+  - `DisputeStatus`
+  - `ReportStatus`
   - `UserDto`, `SportDto`, `MatchDto`, `RatingDto`
 - Reduce type drift between mobile and API.
 
 ## Database Responsibility
-- Store durable records for users, sports, ratings, venues, matches, participants, results, and rating history.
+- Store durable records for users, sports, ratings, venues, matches, participants, results, rating history, reliability stats, disputes, and reports.
 - Enforce relational consistency via foreign keys and unique constraints.
 
 ## Request Flow Example

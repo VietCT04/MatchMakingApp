@@ -21,12 +21,17 @@ function createParticipationService(match: any) {
     setFull: jest.fn(),
     setOpen: jest.fn(),
   } as unknown as MatchLifecycleService;
+  const reliabilityService = {
+    incrementCancellation: jest.fn(),
+    incrementNoShow: jest.fn(),
+  };
 
   return {
     prisma,
     queryService,
     lifecycleService,
-    participationService: new MatchParticipationService(prisma as any, queryService, lifecycleService),
+    reliabilityService,
+    participationService: new MatchParticipationService(prisma as any, queryService, lifecycleService, reliabilityService as any),
     resultSubmissionService: new MatchResultSubmissionService(prisma as any, queryService),
   };
 }
@@ -87,5 +92,20 @@ describe('Matches services', () => {
     await expect(
       resultSubmissionService.submit('match-1', 'user-1', { teamAScore: 21, teamBScore: 15 }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('counts normal leave as cancellation but not late cancellation when outside threshold', async () => {
+    const futureStart = new Date(Date.now() + 6 * 60 * 60 * 1000);
+    const { participationService, reliabilityService } = createParticipationService({
+      id: 'match-1',
+      status: MatchStatus.OPEN,
+      startsAt: futureStart,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    });
+
+    await participationService.leave('match-1', 'user-1');
+
+    expect(reliabilityService.incrementCancellation).toHaveBeenCalledWith('user-1', false);
   });
 });

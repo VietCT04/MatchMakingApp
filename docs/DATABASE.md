@@ -6,7 +6,7 @@
 - Schema file: `apps/api/prisma/schema.prisma`
 - Connection variable: `DATABASE_URL`
 
-The schema models users, sports, ratings, venues, matches, participants, match results, and rating history.
+The schema models users, sports, ratings, venues, matches, participants, match results, rating history, reliability stats, disputes, and user reports.
 
 ## Entity Relationship Explanation
 - A `User` can create many `Match` records.
@@ -29,6 +29,9 @@ Fields:
 - `homeLocationText` (nullable)
 - `createdAt`
 - `updatedAt`
+
+Reliability relation:
+- one-to-one `userReliabilityStats`
 
 ### Sport
 Fields:
@@ -103,6 +106,45 @@ Fields:
 - `createdAt`
 - `updatedAt`
 
+### UserReliabilityStats
+Fields:
+- `id` (uuid, PK)
+- `userId` (unique FK -> User)
+- `completedMatches` (default `0`)
+- `cancelledMatches` (default `0`)
+- `lateCancellationCount` (default `0`)
+- `noShowCount` (default `0`)
+- `disputedResults` (default `0`)
+- `reportCount` (default `0`)
+- `reliabilityScore` (default `100`)
+- `createdAt`
+- `updatedAt`
+
+### MatchResultDispute
+Fields:
+- `id` (uuid, PK)
+- `matchResultId` (FK -> MatchResult)
+- `matchId` (FK -> Match)
+- `createdByUserId` (FK -> User)
+- `reason`
+- `status` (`OPEN`, `RESOLVED`, `REJECTED`)
+- `createdAt`
+- `updatedAt`
+
+Constraint:
+- unique composite: `(matchResultId, createdByUserId)`
+
+### UserReport
+Fields:
+- `id` (uuid, PK)
+- `reportedUserId` (FK -> User)
+- `reporterUserId` (FK -> User)
+- `matchId` (nullable FK -> Match)
+- `reason`
+- `status` (`OPEN`, `REVIEWED`, `DISMISSED`)
+- `createdAt`
+- `updatedAt`
+
 ### RatingHistory
 Fields:
 - `id` (uuid, PK)
@@ -132,6 +174,10 @@ Index:
   - `JOINED`, `LEFT`, `NO_SHOW`
 - `Team`
   - `A`, `B`, `UNKNOWN`
+- `DisputeStatus`
+  - `OPEN`, `RESOLVED`, `REJECTED`
+- `ReportStatus`
+  - `OPEN`, `REVIEWED`, `DISMISSED`
 
 ## Migration Commands
 From `apps/api`:
@@ -144,6 +190,7 @@ pnpm prisma:generate
 Committed migration:
 - `apps/api/prisma/migrations/20260425000100_init/migration.sql`
 - `apps/api/prisma/migrations/20260425000200_add_user_password_hash/migration.sql`
+- `apps/api/prisma/migrations/20260426150000_trust_safety_reliability/migration.sql`
 
 ## Seed Data
 Implemented at `apps/api/prisma/seed.ts`.
@@ -154,6 +201,7 @@ Seed includes:
 - 4 demo users
 - stable demo user IDs, including `11111111-1111-4111-8111-111111111111` for the mobile demo user
 - default singles and doubles ratings for each user/sport
+- default reliability stats for each seeded user
 - a few open demo matches
 
 Run it with:

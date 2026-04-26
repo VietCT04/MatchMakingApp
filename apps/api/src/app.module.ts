@@ -7,6 +7,8 @@ import { MatchesModule } from './matches/matches.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { VenuesModule } from './venues/venues.module';
 import { AuthModule } from './auth/auth.module';
+import { ReliabilityModule } from './reliability/reliability.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { AuthModule } from './auth/auth.module';
     RatingsModule,
     VenuesModule,
     AuthModule,
+    ReliabilityModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

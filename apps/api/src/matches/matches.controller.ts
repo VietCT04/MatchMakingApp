@@ -10,6 +10,7 @@ import { JoinMatchDto } from './dto.join-match';
 import { SubmitResultDto } from './dto.submit-result';
 import { MatchResultVerificationService } from './match-result-verification.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
+import { CreateDisputeDto } from './dto.create-dispute';
 
 @Controller('matches')
 export class MatchesController {
@@ -61,6 +62,27 @@ export class MatchesController {
   @UseGuards(JwtAuthGuard)
   submitResult(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SubmitResultDto) {
     return this.matchesService.submitResultForUser(id, user.id, dto);
+  }
+
+  @Post(':id/participants/:participantId/no-show')
+  @UseGuards(JwtAuthGuard)
+  markNoShow(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+  ) {
+    return this.matchesService.markNoShow(id, participantId, user.id);
+  }
+
+  @Post(':id/results/:resultId/disputes')
+  @UseGuards(JwtAuthGuard)
+  disputeResult(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('resultId') resultId: string,
+    @Body() dto: CreateDisputeDto,
+  ) {
+    return this.matchesService.createDispute(id, resultId, user.id, dto);
   }
 
   @Post(':id/results/:resultId/verify')

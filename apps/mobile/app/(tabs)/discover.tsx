@@ -174,6 +174,9 @@ export default function DiscoverScreen() {
             <View style={styles.badgeRow}>
               {typeof match.fitScore === 'number' ? <Badge tone="info">{Math.round(match.fitScore)}% fit</Badge> : null}
               {usingLocation && match.distanceKm !== undefined ? <Badge tone="success">{match.distanceKm.toFixed(1)} km away</Badge> : null}
+              {match.fitBreakdown?.reliabilityScore !== undefined ? (
+                <Badge>{Math.round(match.fitBreakdown.reliabilityScore)} reliability</Badge>
+              ) : null}
             </View>
           </AppCard>
         );

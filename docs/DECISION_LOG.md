@@ -1,5 +1,34 @@
 # Decision Log
 
+## 2026-04-26: Trust/safety reliability scoring and moderation-lite workflows
+
+Decision:
+- Add a separate reliability domain (`UserReliabilityStats`) instead of extending Elo.
+- Track reliability events from MVP workflows:
+  - no-show marking
+  - match leave + late cancellation window (2 hours before start)
+  - result disputes
+  - user reports
+  - completed matches on verified result
+- Add lightweight trust/safety endpoints without building a full admin dashboard yet:
+  - `GET /me/reliability`
+  - `GET /users/:userId/reliability`
+  - `POST /matches/:id/participants/:participantId/no-show`
+  - `POST /matches/:id/results/:resultId/disputes`
+  - `POST /reports/users`
+- Update ranked discovery to include reliability:
+  - distance 30%, rating fit 30%, reliability 20%, time 10%, slot availability 10%
+
+Reasoning:
+- Skill and trustworthiness represent different product signals and should be independently tunable.
+- Reliability penalties provide immediate abuse/friction controls in MVP without blocking the core play/report/verify loop.
+- Rule-based ranking remains transparent and debuggable while adding meaningful trust context.
+
+Follow-up:
+- Build moderator workflows for dispute/report resolution.
+- Revisit dispute attribution (currently MVP-level simplification in ambiguous ownership cases).
+- Tune penalty weights and thresholds using production behavior data.
+
 ## 2026-04-26: Mobile route groups, tabs, and shared UI primitives
 
 Decision:

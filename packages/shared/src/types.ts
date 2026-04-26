@@ -22,6 +22,18 @@ export enum Team {
   UNKNOWN = 'UNKNOWN',
 }
 
+export enum DisputeStatus {
+  OPEN = 'OPEN',
+  RESOLVED = 'RESOLVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum ReportStatus {
+  OPEN = 'OPEN',
+  REVIEWED = 'REVIEWED',
+  DISMISSED = 'DISMISSED',
+}
+
 export interface UserDto {
   id: string;
   email: string;
@@ -72,6 +84,8 @@ export interface MatchParticipantDto {
   userId: string;
   status: MatchParticipantStatus;
   team: Team;
+  displayName?: string;
+  reliabilityScore?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,9 +111,43 @@ export interface MatchWithDetailsDto extends MatchDto {
   fitBreakdown?: {
     distanceScore: number;
     ratingFitScore: number;
+    reliabilityScore: number;
     timeScore: number;
     slotAvailabilityScore: number;
   };
+}
+
+export interface ReliabilityStatsDto {
+  userId: string;
+  completedMatches: number;
+  cancelledMatches: number;
+  lateCancellationCount: number;
+  noShowCount: number;
+  disputedResults: number;
+  reportCount: number;
+  reliabilityScore: number;
+}
+
+export interface MatchResultDisputeDto {
+  id: string;
+  matchResultId: string;
+  matchId: string;
+  createdByUserId: string;
+  reason: string;
+  status: DisputeStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserReportDto {
+  id: string;
+  reportedUserId: string;
+  reporterUserId: string;
+  matchId: string | null;
+  reason: string;
+  status: ReportStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RatingDto {

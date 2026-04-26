@@ -7,6 +7,9 @@
   - Elo/rating utilities and rating service
   - Match query DTO validation
   - Match query/ranking behavior
+  - Reliability service scoring and penalty updates
+  - Report/dispute validation and authorization behavior
+  - Result verification completed-match reliability increments
   - Match service behavior
   - Auth service and JWT guard behavior
   - Auth identity handling in match controller
@@ -26,6 +29,7 @@ Current status:
 Plan:
 - Add more endpoint-level integration cases (validation failures, authorization failures, not-found paths).
 - Add CI strategy for isolated test database execution.
+- Add integration coverage for no-show/report/dispute endpoints against a DB-backed test env.
 
 ## Mobile Component Tests
 Current status:
@@ -70,4 +74,4 @@ pnpm typecheck
 
 ## Notes
 - `ts-jest` TS151002 warning is resolved through Jest transform config (`isolatedModules`).
-- Test coverage is materially improved versus initial MVP scaffold, but mobile component/E2E suites are still pending.
+- Test coverage is materially improved versus initial MVP scaffold, but mobile component/E2E suites and moderation resolution-path integration tests are still pending.

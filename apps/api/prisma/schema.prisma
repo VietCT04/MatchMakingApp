@@ -31,6 +31,18 @@ enum Team {
   UNKNOWN
 }
 
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
 model User {
   id               String            @id @default(uuid())
   email            String            @unique
@@ -46,6 +58,10 @@ model User {
   submittedResults MatchResult[]     @relation("ResultSubmittedBy")
   ratings          UserSportRating[]
   ratingHistory    RatingHistory[]
+  reliabilityStats UserReliabilityStats?
+  createdDisputes  MatchResultDispute[] @relation("DisputeCreatedBy")
+  reportsFiled     UserReport[] @relation("ReportBy")
+  reportsReceived  UserReport[] @relation("ReportedUser")
 }
 
 model Sport {
@@ -110,6 +126,8 @@ model Match {
   participants    MatchParticipant[]
   result          MatchResult?
   ratingHistory   RatingHistory[]
+  disputes        MatchResultDispute[]
+  reports         UserReport[]
 
   @@index([sportId, status, startsAt])
   @@index([venueId, startsAt])
@@ -143,6 +161,7 @@ model MatchResult {
 
   match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   submittedByUser   User     @relation("ResultSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  disputes          MatchResultDispute[]
 }
 
 model RatingHistory {
@@ -160,4 +179,56 @@ model RatingHistory {
   match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@index([userId, sportId, createdAt])
+}
+
+model UserReliabilityStats {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  completedMatches      Int      @default(0)
+  cancelledMatches      Int      @default(0)
+  lateCancellationCount Int      @default(0)
+  noShowCount           Int      @default(0)
+  disputedResults       Int      @default(0)
+  reportCount           Int      @default(0)
+  reliabilityScore      Int      @default(100)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MatchResultDispute {
+  id              String       @id @default(uuid())
+  matchResultId   String
+  matchId         String
+  createdByUserId String
+  reason          String
+  status          DisputeStatus @default(OPEN)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  matchResult     MatchResult  @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
+  match           Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  createdByUser   User         @relation("DisputeCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([matchResultId, createdByUserId])
+  @@index([matchId, status])
+}
+
+model UserReport {
+  id             String      @id @default(uuid())
+  reportedUserId String
+  reporterUserId String
+  matchId        String?
+  reason         String
+  status         ReportStatus @default(OPEN)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  reportedUser   User        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reporterUser   User        @relation("ReportBy", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  match          Match?      @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
+  @@index([reportedUserId, status])
+  @@index([reporterUserId, createdAt])
 }

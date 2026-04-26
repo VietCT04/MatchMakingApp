@@ -5,10 +5,12 @@ import { MatchQueryDto } from './dto.match-query';
 import { SubmitResultDto } from './dto.submit-result';
 import { UpdateMatchDto } from './dto.update-match';
 import { MatchLifecycleService } from './match-lifecycle.service';
+import { MatchDisputeService } from './match-dispute.service';
 import { MatchParticipationService } from './match-participation.service';
 import { MatchQueryService } from './match-query.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
 import { AuthUser } from '../auth/auth-user';
+import { CreateDisputeDto } from './dto.create-dispute';
 
 @Injectable()
 export class MatchesService {
@@ -16,6 +18,7 @@ export class MatchesService {
     private readonly queryService: MatchQueryService,
     private readonly lifecycleService: MatchLifecycleService,
     private readonly participationService: MatchParticipationService,
+    private readonly disputeService: MatchDisputeService,
     private readonly resultSubmissionService: MatchResultSubmissionService,
   ) {}
 
@@ -47,7 +50,15 @@ export class MatchesService {
     return this.participationService.leave(matchId, userId);
   }
 
+  markNoShow(matchId: string, participantId: string, actorUserId: string) {
+    return this.participationService.markNoShow(matchId, participantId, actorUserId);
+  }
+
   submitResultForUser(matchId: string, userId: string, dto: SubmitResultDto) {
     return this.resultSubmissionService.submit(matchId, userId, dto);
+  }
+
+  createDispute(matchId: string, resultId: string, userId: string, dto: CreateDisputeDto) {
+    return this.disputeService.createDispute(matchId, resultId, userId, dto);
   }
 }

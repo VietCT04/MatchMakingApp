@@ -1,13 +1,24 @@
 import { useMemo, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MatchParticipantStatus, MatchStatus, Team } from '@sports-matchmaking/shared';
 import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
 import { useMatchDetail } from '../../src/hooks/useMatchDetail';
+import { Screen } from '../../src/components/Screen';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { AppCard } from '../../src/components/ui/AppCard';
+import { AppButton } from '../../src/components/ui/AppButton';
+import { AppInput } from '../../src/components/ui/AppInput';
+import { Badge } from '../../src/components/ui/Badge';
+import { LoadingState } from '../../src/components/states/LoadingState';
+import { ErrorState } from '../../src/components/states/ErrorState';
 
-function toParticipantLabel(userId: string, currentUserId: string | undefined) {
-  return userId === currentUserId ? 'You' : `Player ${userId.slice(0, 8)}`;
+function toParticipantLabel(displayName: string | undefined, userId: string, currentUserId: string | undefined) {
+  if (userId === currentUserId) {
+    return 'You';
+  }
+  return displayName ?? `Player ${userId.slice(0, 8)}`;
 }
 
 export default function MatchDetailScreen() {
@@ -17,11 +28,14 @@ export default function MatchDetailScreen() {
   const { data: match, loading, error: loadError, refresh } = useMatchDetail(matchId);
   const [teamAScore, setTeamAScore] = useState('21');
   const [teamBScore, setTeamBScore] = useState('17');
+  const [disputeReason, setDisputeReason] = useState('Score is incorrect');
+  const [reportReason, setReportReason] = useState('No show without notice');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [message, setMessage] = useState('');
 
   const error = actionError || loadError;
+  const now = Date.now();
 
   const joinedParticipants = useMemo(
     () => match?.participants?.filter((item) => item.status === MatchParticipantStatus.JOINED) ?? [],
@@ -34,6 +48,7 @@ export default function MatchDetailScreen() {
   const pendingResult = match?.result ?? null;
 
   const isOpen = match?.status === MatchStatus.OPEN;
+  const hasStarted = (match?.startsAt ? new Date(match.startsAt).getTime() : Number.MAX_SAFE_INTEGER) <= now;
   const canJoin =
     Boolean(user) &&
     isOpen &&
@@ -46,6 +61,8 @@ export default function MatchDetailScreen() {
     Boolean(pendingResult) &&
     !pendingResult?.verified &&
     pendingResult?.submittedByUserId !== user?.id;
+  const canDispute = Boolean(currentParticipant) && Boolean(pendingResult) && !pendingResult?.verified;
+  const canMarkNoShow = Boolean(user && match && match.createdByUserId === user.id && hasStarted);
 
   async function runAction(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -84,26 +101,116 @@ export default function MatchDetailScreen() {
     await runAction(() => apiClient.verifyMatchResult(matchId ?? '', resultId), 'Result verified and ratings updated.');
   }
 
+  async function disputeResult() {
+    const resultId = pendingResult?.id;
+    if (!resultId) {
+      setActionError('No result available to dispute yet.');
+      return;
+    }
+    await runAction(
+      () => apiClient.disputeMatchResult(matchId ?? '', resultId, disputeReason),
+      'Dispute submitted and marked as OPEN.',
+    );
+  }
+
+  function confirmNoShow(participantId: string, displayName: string) {
+    Alert.alert(
+      'Mark no-show',
+      `Mark ${displayName} as no-show?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            void runAction(
+              () => apiClient.markParticipantNoShow(matchId ?? '', participantId),
+              `${displayName} marked as no-show.`,
+            );
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmReport(reportedUserId: string, displayName: string) {
+    Alert.alert(
+      'Report participant',
+      `Report ${displayName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: () => {
+            void runAction(
+              () => apiClient.reportUser({ reportedUserId, matchId, reason: reportReason }),
+              `Report submitted for ${displayName}.`,
+            );
+          },
+        },
+      ],
+    );
+  }
+
+  function renderTeam(title: string, participants: typeof joinedParticipants) {
+    return (
+      <View style={styles.teamBlock}>
+        <Text style={styles.subheading}>{title}</Text>
+        {participants.length === 0 ? <Text style={styles.muted}>No players yet.</Text> : null}
+        {participants.map((participant) => {
+          const displayName = toParticipantLabel(participant.displayName, participant.userId, user?.id);
+          const reliabilityScore = participant.reliabilityScore ?? 100;
+          const canMarkThisNoShow =
+            canMarkNoShow &&
+            participant.userId !== user?.id &&
+            participant.status === MatchParticipantStatus.JOINED;
+          const canReportThisUser = participant.userId !== user?.id;
+          return (
+            <View key={participant.id} style={styles.participantRow}>
+              <View style={styles.participantText}>
+                <Text style={styles.line}>{displayName}</Text>
+                <Badge>{reliabilityScore} reliability</Badge>
+              </View>
+              <View style={styles.rowActions}>
+                {canMarkThisNoShow ? (
+                  <AppButton
+                    variant="secondary"
+                    disabled={busy}
+                    onPress={() => confirmNoShow(participant.id, displayName)}
+                  >
+                    No-show
+                  </AppButton>
+                ) : null}
+                {canReportThisUser ? (
+                  <AppButton
+                    variant="secondary"
+                    disabled={busy}
+                    onPress={() => confirmReport(participant.userId, displayName)}
+                  >
+                    Report
+                  </AppButton>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Match Detail</Text>
-      {loading ? <Text style={styles.muted}>Loading match...</Text> : null}
-      {error ? (
-        <View style={styles.messageBox}>
-          <Text style={styles.error}>{error}</Text>
-          <Pressable style={styles.secondaryButton} onPress={refresh}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : null}
+    <Screen>
+      <ScreenHeader title="Match Detail" />
+      {loading ? <LoadingState message="Loading match..." /> : null}
+      {error ? <ErrorState message={error} onRetry={refresh} /> : null}
       {message ? <Text style={styles.success}>{message}</Text> : null}
 
       {match ? (
         <>
-          <View style={styles.card}>
+          <AppCard>
             <View style={styles.headerRow}>
               <Text style={styles.heading}>{match.title}</Text>
-              <Text style={styles.statusPill}>{match.status}</Text>
+              <Badge>{match.status}</Badge>
             </View>
             <Text style={styles.line}>Sport: {match.sport?.name ?? match.sportId}</Text>
             <Text style={styles.line}>Format: {match.format}</Text>
@@ -111,66 +218,38 @@ export default function MatchDetailScreen() {
             <Text style={styles.line}>Date & time: {new Date(match.startsAt).toLocaleString()}</Text>
             <Text style={styles.line}>Rating range: {match.minRating ?? 'Any'}-{match.maxRating ?? 'Any'}</Text>
             <Text style={styles.line}>Players: {joinedParticipants.length}/{match.maxPlayers}</Text>
-            {typeof match.fitScore === 'number' ? <Text style={styles.fitBadge}>{Math.round(match.fitScore)}% fit</Text> : null}
+            {typeof match.fitScore === 'number' ? <Badge tone="info">{Math.round(match.fitScore)}% fit</Badge> : null}
             <Text style={styles.participationState}>
               Your status: {currentParticipant ? `Joined Team ${currentParticipant.team}` : 'Not joined'}
             </Text>
-          </View>
+          </AppCard>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Participants</Text>
-            <Text style={styles.subheading}>Team A</Text>
-            {teamAPlayers.length === 0 ? <Text style={styles.muted}>No players yet.</Text> : null}
-            {teamAPlayers.map((participant) => (
-              <Text key={participant.id} style={styles.line}>{toParticipantLabel(participant.userId, user?.id)}</Text>
-            ))}
-            <Text style={styles.subheading}>Team B</Text>
-            {teamBPlayers.length === 0 ? <Text style={styles.muted}>No players yet.</Text> : null}
-            {teamBPlayers.map((participant) => (
-              <Text key={participant.id} style={styles.line}>{toParticipantLabel(participant.userId, user?.id)}</Text>
-            ))}
-            <Text style={styles.subheading}>Unknown</Text>
-            {unknownPlayers.length === 0 ? <Text style={styles.muted}>No players yet.</Text> : null}
-            {unknownPlayers.map((participant) => (
-              <Text key={participant.id} style={styles.line}>{toParticipantLabel(participant.userId, user?.id)}</Text>
-            ))}
-          </View>
+          <AppCard>
+            <Text style={styles.sectionTitle}>Participants & Reliability</Text>
+            {renderTeam('Team A', teamAPlayers)}
+            {renderTeam('Team B', teamBPlayers)}
+            {renderTeam('Unknown', unknownPlayers)}
+          </AppCard>
 
-          <View style={styles.card}>
+          <AppCard>
             <Text style={styles.sectionTitle}>Actions</Text>
             <View style={styles.actionRow}>
               {canJoin ? (
                 <>
-                  <Pressable
-                    style={[styles.button, busy && styles.buttonDisabled]}
-                    disabled={busy}
-                    onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.A), 'Joined Team A.')}
-                  >
-                    <Text style={styles.buttonText}>Join Team A</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.button, busy && styles.buttonDisabled]}
-                    disabled={busy}
-                    onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.B), 'Joined Team B.')}
-                  >
-                    <Text style={styles.buttonText}>Join Team B</Text>
-                  </Pressable>
+                  <AppButton disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.A), 'Joined Team A.')}>Join Team A</AppButton>
+                  <AppButton disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.B), 'Joined Team B.')}>Join Team B</AppButton>
                 </>
               ) : null}
               {canLeave ? (
-                <Pressable
-                  style={[styles.secondaryButton, busy && styles.buttonDisabled]}
-                  disabled={busy}
-                  onPress={() => runAction(() => apiClient.leaveMatch(match.id), 'You left the match.')}
-                >
-                  <Text style={styles.secondaryButtonText}>Leave match</Text>
-                </Pressable>
+                <AppButton variant="secondary" disabled={busy} onPress={() => runAction(() => apiClient.leaveMatch(match.id), 'You left the match.')}>
+                  Leave match
+                </AppButton>
               ) : null}
             </View>
-            {!canJoin && !canLeave ? <Text style={styles.muted}>No available participation actions right now.</Text> : null}
-          </View>
+            {canMarkNoShow && !hasStarted ? <Text style={styles.muted}>No-show is available only after match start.</Text> : null}
+          </AppCard>
 
-          <View style={styles.card}>
+          <AppCard>
             <Text style={styles.sectionTitle}>Result</Text>
             {pendingResult ? (
               <>
@@ -189,99 +268,62 @@ export default function MatchDetailScreen() {
             {canSubmitResult ? (
               <>
                 <View style={styles.scoreRow}>
-                  <View style={styles.scoreField}>
-                    <Text style={styles.scoreLabel}>Team A score</Text>
-                    <TextInput
-                      style={styles.scoreInput}
-                      value={teamAScore}
-                      onChangeText={setTeamAScore}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                    />
-                  </View>
-                  <View style={styles.scoreField}>
-                    <Text style={styles.scoreLabel}>Team B score</Text>
-                    <TextInput
-                      style={styles.scoreInput}
-                      value={teamBScore}
-                      onChangeText={setTeamBScore}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                    />
-                  </View>
+                  <AppInput style={styles.halfInput} label="Team A score" value={teamAScore} onChangeText={setTeamAScore} keyboardType="number-pad" />
+                  <AppInput style={styles.halfInput} label="Team B score" value={teamBScore} onChangeText={setTeamBScore} keyboardType="number-pad" />
                 </View>
-                <Pressable style={[styles.button, busy && styles.buttonDisabled]} disabled={busy} onPress={submitResult}>
-                  <Text style={styles.buttonText}>Submit result</Text>
-                </Pressable>
+                <AppButton disabled={busy} onPress={submitResult}>Submit result</AppButton>
               </>
             ) : null}
 
-            {canVerify ? (
-              <Pressable style={[styles.secondaryButton, busy && styles.buttonDisabled]} disabled={busy} onPress={verifyResult}>
-                <Text style={styles.secondaryButtonText}>Verify result</Text>
-              </Pressable>
+            {canVerify ? <AppButton variant="secondary" disabled={busy} onPress={verifyResult}>Verify result</AppButton> : null}
+
+            {canDispute ? (
+              <>
+                <AppInput
+                  label="Dispute reason"
+                  value={disputeReason}
+                  onChangeText={setDisputeReason}
+                  placeholder="Explain why the result is incorrect"
+                />
+                <AppButton variant="secondary" disabled={busy} onPress={disputeResult}>Dispute result</AppButton>
+              </>
             ) : null}
-            {!canSubmitResult && !canVerify && !pendingResult?.verified ? (
-              <Text style={styles.muted}>Only joined participants can submit or verify results.</Text>
+
+            {currentParticipant ? (
+              <AppInput
+                label="Default report reason"
+                value={reportReason}
+                onChangeText={setReportReason}
+                placeholder="Reason when reporting participants"
+                helperText="Use this reason when tapping report buttons above."
+              />
             ) : null}
-            {pendingResult && pendingResult.submittedByUserId === user?.id && !pendingResult.verified ? (
-              <Text style={styles.muted}>You submitted this result. Another participant must verify it.</Text>
-            ) : null}
-          </View>
+          </AppCard>
         </>
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6fb' },
-  content: { padding: 20, gap: 14, paddingBottom: 24 },
-  title: { fontSize: 28, fontWeight: '700', color: '#17263b' },
-  card: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d5deec',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   heading: { fontSize: 20, fontWeight: '700', color: '#20304a', flex: 1 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#20304a' },
   subheading: { fontWeight: '700', color: '#44516a', marginTop: 4 },
   line: { color: '#44516a' },
   participationState: { color: '#20304a', fontWeight: '600' },
-  statusPill: {
-    fontSize: 12,
-    color: '#20304a',
-    backgroundColor: '#e7ecf7',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontWeight: '700',
-  },
-  fitBadge: {
-    color: '#1f4ad3',
-    fontWeight: '700',
-    backgroundColor: '#e9efff',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    alignSelf: 'flex-start',
-  },
-  messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },
-  error: { color: '#b42318' },
   success: { color: '#067647', fontWeight: '600' },
+  teamBlock: { gap: 6 },
+  participantRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    alignItems: 'center',
+  },
+  participantText: { gap: 4, flex: 1 },
+  rowActions: { gap: 6, alignItems: 'flex-end' },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  button: { backgroundColor: '#1f4ad3', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  buttonText: { color: '#fff', fontWeight: '700' },
-  secondaryButton: { borderColor: '#1f4ad3', borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, alignSelf: 'flex-start' },
-  secondaryButtonText: { color: '#1f4ad3', fontWeight: '700' },
-  buttonDisabled: { opacity: 0.65 },
   scoreRow: { flexDirection: 'row', gap: 8 },
-  scoreField: { flex: 1, gap: 6 },
-  scoreLabel: { color: '#44516a', fontWeight: '600' },
-  scoreInput: { borderWidth: 1, borderColor: '#c9d3e6', borderRadius: 10, padding: 12, backgroundColor: '#fff' },
+  halfInput: { flex: 1 },
 });

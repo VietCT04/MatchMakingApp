@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { DEFAULT_RATING } from '../ratings/elo';
 
-const DISTANCE_WEIGHT = 0.35;
-const RATING_WEIGHT = 0.35;
-const TIME_WEIGHT = 0.15;
-const SLOT_WEIGHT = 0.15;
+const DISTANCE_WEIGHT = 0.30;
+const RATING_WEIGHT = 0.30;
+const RELIABILITY_WEIGHT = 0.20;
+const TIME_WEIGHT = 0.10;
+const SLOT_WEIGHT = 0.10;
 const MAX_RATING_GAP = 400;
 
 export type MatchFitBreakdown = {
   distanceScore: number;
   ratingFitScore: number;
+  reliabilityScore: number;
   timeScore: number;
   slotAvailabilityScore: number;
 };
@@ -23,6 +25,7 @@ type MatchFitInput = {
   distanceKm?: number;
   radiusKm?: number;
   userRating?: number;
+  reliabilityScore?: number;
   minRating?: number | null;
   maxRating?: number | null;
   startsAt: Date;
@@ -111,6 +114,7 @@ export class MatchRankingService {
     const breakdown: MatchFitBreakdown = {
       distanceScore: this.calculateDistanceScore(input.distanceKm, input.radiusKm),
       ratingFitScore: this.calculateRatingFitScore(input.userRating, input.minRating, input.maxRating),
+      reliabilityScore: this.round(this.clamp(input.reliabilityScore ?? 80, 0, 100)),
       timeScore: this.calculateTimeScore(input.startsAt, now),
       slotAvailabilityScore: this.calculateSlotAvailabilityScore(input.participantCount, input.maxPlayers),
     };
@@ -118,6 +122,7 @@ export class MatchRankingService {
     const fitScore =
       breakdown.distanceScore * DISTANCE_WEIGHT +
       breakdown.ratingFitScore * RATING_WEIGHT +
+      breakdown.reliabilityScore * RELIABILITY_WEIGHT +
       breakdown.timeScore * TIME_WEIGHT +
       breakdown.slotAvailabilityScore * SLOT_WEIGHT;
 

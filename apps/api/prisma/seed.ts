@@ -99,6 +99,15 @@ async function main(): Promise<void> {
   );
 
   for (const user of users) {
+    await prisma.userReliabilityStats.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        reliabilityScore: 100,
+      },
+    });
+
     for (const sport of sports) {
       for (const format of [SportFormat.SINGLES, SportFormat.DOUBLES]) {
         await prisma.userSportRating.upsert({

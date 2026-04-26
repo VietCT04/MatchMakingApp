@@ -47,14 +47,21 @@ sports-matchmaking/
 - CRUD skeletons for users, sports, venues, matches.
 - Match discovery filters on `GET /matches`.
 - Match discovery supports optional nearby filtering via `latitude` + `longitude` + `radiusKm`, computed with Haversine in service logic.
-- Match discovery supports optional ranked mode (`ranked=true`) with rule-based `fitScore` + `fitBreakdown` ordering.
+- Match discovery supports optional ranked mode (`ranked=true`) with rule-based `fitScore` + `fitBreakdown` ordering, including participant reliability contribution.
 - Match participant endpoints:
   - `POST /matches/:id/participants` (legacy alias)
   - `POST /matches/:id/join`
   - `POST /matches/:id/leave`
+  - `POST /matches/:id/participants/:participantId/no-show`
 - Match result endpoints:
   - `POST /matches/:id/results`
   - `POST /matches/:id/results/:resultId/verify`
+  - `POST /matches/:id/results/:resultId/disputes`
+- Reports endpoint:
+  - `POST /reports/users`
+- Reliability endpoints:
+  - `GET /me/reliability`
+  - `GET /users/:userId/reliability`
 - User rating endpoints:
   - `GET /users/:userId/ratings`
   - `GET /users/:userId/rating-history`
@@ -87,8 +94,7 @@ sports-matchmaking/
 - Push notification integration.
 - Map/location services and geospatial filtering.
 - Payment logic.
-- Rating update pipeline exists for verified results, but needs broader integration coverage and product rules for disputes.
-- Admin/moderation tooling.
+- Admin/moderation dashboard and dispute-resolution workflow.
 
 ## Backend Notes
 - Controllers currently delegate to services and should remain thin.
@@ -108,7 +114,10 @@ sports-matchmaking/
 - Temporary demo-user/dummy match path has been removed from the normal app flow.
 - Discover screen now supports current-location filtering with a radius selector (3/5/10/20 km), and gracefully falls back to showing all open matches if permission is denied.
 - Discover now requests ranked results for authenticated users and shows `NN% fit` labels on match cards.
+- Discover can also show reliability from ranked fit breakdown when present.
 - Mobile MVP UI is now demo-ready: home flow guidance, polished auth forms, clearer match cards, improved create-match form UX, grouped participants in match detail, clearer result verification messaging, grouped ratings display, and cleaner profile fallbacks.
+- Match detail includes trust/safety actions for no-show marking (creator-only, post-start), result disputes, and user reports.
+- Profile includes a reliability stats card (score, completions, cancellations, late cancellations, no-shows, disputes, reports).
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
 
@@ -129,13 +138,20 @@ sports-matchmaking/
   - `teamAverageRating(ratings)`
 - Unit tests exist in `apps/api/src/ratings/elo.spec.ts`.
 - Verification now persists rating updates and `RatingHistory` rows.
+- Reliability is handled separately in `apps/api/src/reliability/reliability.service.ts` and does not change Elo values.
 
 ## API Notes
 - REST-first NestJS API.
 - Base local URL: `http://localhost:3000`.
 - Error responses use Nest defaults (statusCode/message/error) for exceptions.
 - Detailed endpoint docs: [docs/API.md](./docs/API.md).
-- `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI).
+- `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI), and now includes reliability in ranking.
+- Current fit weights:
+  - distance 30%
+  - rating fit 30%
+  - reliability 20%
+  - time 10%
+  - slot availability 10%
 - Backend tests currently include one intentionally skipped integration suite (`match-flow.integration.spec.ts`) when `DATABASE_URL` is not set in the test environment.
 - TS151002 ts-jest warning has been resolved by setting isolated module handling in Jest transform config.
 
@@ -145,6 +161,7 @@ sports-matchmaking/
 - Backend business logic belongs in services, not controllers.
 - Mobile screens are intentionally thin; API and business logic should live in abstractions.
 - Elo starts simple for speed and readability, with explicit upgrade path later.
+- Reliability/trust scoring remains a separate service/domain from Elo skill rating.
 
 ## Known Limitations
 - Passwords are stored as bcrypt hashes; plaintext passwords are not stored.
@@ -161,8 +178,8 @@ sports-matchmaking/
 3. Implement chat and push notifications.
 4. Implement payments.
 5. Add map UI for visual nearby discovery.
-6. Add advanced rating/dispute and moderation rules.
-7. Evolve ranking with availability windows, reliability/no-show signals, and learned recommendations.
+6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
+7. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
 
 ## Local Development Commands
 From repo root:
@@ -211,6 +228,8 @@ pnpm typecheck
 - Reuse shared types from `packages/shared`.
 - Do not hardcode API URLs inside screens.
 - Keep Elo logic isolated in the ratings service.
+- Keep reliability logic isolated in the reliability service.
+- Do not mix Elo (skill) and reliability (trust/safety) concerns.
 - Keep the scaffold simple and extensible.
 - Do not implement payment, chat, maps, push notifications, or AI matchmaking unless specifically requested.
 - Update `CONTINUITY.md` after every major code change.

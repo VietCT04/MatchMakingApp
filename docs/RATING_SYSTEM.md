@@ -9,6 +9,11 @@ Elo is a rating system that estimates skill by updating a player's rating after 
 - Gives quick feedback after each match.
 - Good MVP choice before more advanced probabilistic systems.
 
+## Elo vs Reliability
+- Elo measures skill/performance in matches.
+- Reliability measures trust/safety behavior (no-shows, late cancellations, disputes, reports).
+- Reliability is implemented in a separate service/domain and affects discovery ranking, not Elo math.
+
 ## Current Configuration
 - Default rating: `1200`
 - K factor: `32`
@@ -90,8 +95,8 @@ new = 1216
   - Unit tests (`elo.spec.ts`)
   - Database-backed MVP flow integration coverage
 - TODO:
-  - Add anti-abuse/review workflow for disputed results
-  - Add production permission checks around result verification
+- Add anti-abuse/review workflow for disputed results
+- Add production permission checks around result verification
 
 ## Related Docs
 - [API](./API.md)

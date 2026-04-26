@@ -39,17 +39,36 @@ export class MatchQueryService {
           lte: startsBeforeDate,
         },
       },
-      include: { participants: true, result: true, sport: true, venue: true },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                reliabilityStats: {
+                  select: {
+                    reliabilityScore: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        result: true,
+        sport: true,
+        venue: true,
+      },
       orderBy: { startsAt: 'asc' },
     });
 
     const hasNearbyFilter = this.hasNearbyLocationQuery(query);
     const withDistanceAndAvailability: Array<(typeof matches)[number] & { distanceKm?: number }> = matches
       .map((match) => {
-        const joinedParticipantCount = match.participants.filter(
+        const joinedParticipants = match.participants.filter(
           (participant) => participant.status === MatchParticipantStatus.JOINED,
-        ).length;
-        const openSlots = match.maxPlayers - joinedParticipantCount;
+        );
+        const openSlots = match.maxPlayers - joinedParticipants.length;
         if (status === MatchStatus.OPEN && openSlots <= 0) {
           return null;
         }
@@ -82,11 +101,22 @@ export class MatchQueryService {
       .filter((match): match is NonNullable<typeof match> => match !== null);
 
     if (query.ranked !== true) {
+      const normalized = withDistanceAndAvailability.map((match) => ({
+        ...match,
+        participants: match.participants.map((participant) => {
+          const { user, ...participantWithoutUser } = participant;
+          return {
+            ...participantWithoutUser,
+            displayName: participant.user.displayName,
+            reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
+          };
+        }),
+      }));
       if (!hasNearbyFilter) {
-        return withDistanceAndAvailability;
+        return normalized;
       }
 
-      return withDistanceAndAvailability.sort(
+      return normalized.sort(
         (a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0) || a.startsAt.getTime() - b.startsAt.getTime(),
       );
     }
@@ -95,15 +125,23 @@ export class MatchQueryService {
 
     return withDistanceAndAvailability
       .map((match) => {
-        const joinedParticipantCount = match.participants.filter(
+        const joinedParticipants = match.participants.filter(
           (participant) => participant.status === MatchParticipantStatus.JOINED,
-        ).length;
+        );
+        const joinedParticipantCount = joinedParticipants.length;
+        const matchReliabilityScore = joinedParticipantCount === 0
+          ? 80
+          : joinedParticipants.reduce((sum, participant) => {
+            const reliabilityScore = participant.user.reliabilityStats?.reliabilityScore ?? 100;
+            return sum + reliabilityScore;
+          }, 0) / joinedParticipantCount;
         const ratingKey = this.toSportFormatKey(match.sportId, match.format);
         const userRating = userRatingsBySportFormat.get(ratingKey) ?? this.matchRankingService.getDefaultRating();
         const fit = this.matchRankingService.calculateFitScore({
           distanceKm: match.distanceKm,
           radiusKm: query.radiusKm,
           userRating,
+          reliabilityScore: Number(matchReliabilityScore.toFixed(2)),
           minRating: match.minRating,
           maxRating: match.maxRating,
           startsAt: match.startsAt,
@@ -113,6 +151,14 @@ export class MatchQueryService {
 
         return {
           ...match,
+          participants: match.participants.map((participant) => {
+            const { user, ...participantWithoutUser } = participant;
+            return {
+              ...participantWithoutUser,
+              displayName: participant.user.displayName,
+              reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
+            };
+          }),
           ...fit,
         };
       })
@@ -122,12 +168,41 @@ export class MatchQueryService {
   async findOne(id: string) {
     const match = await this.prisma.match.findUnique({
       where: { id },
-      include: { participants: true, result: true, sport: true, venue: true },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                reliabilityStats: {
+                  select: {
+                    reliabilityScore: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        result: true,
+        sport: true,
+        venue: true,
+      },
     });
     if (!match) {
       throw new NotFoundException('Match not found');
     }
-    return match;
+    return {
+      ...match,
+      participants: match.participants.map((participant) => {
+        const { user, ...participantWithoutUser } = participant;
+        return {
+          ...participantWithoutUser,
+          displayName: participant.user.displayName,
+          reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
+        };
+      }),
+    };
   }
 
   validateRatingRange(minRating?: number, maxRating?: number): void {

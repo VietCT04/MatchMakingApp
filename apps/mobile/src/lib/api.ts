@@ -1,11 +1,15 @@
 import type {
   CreateMatchInput,
   MatchDto,
+  MatchParticipantDto,
+  MatchResultDisputeDto,
   MatchResultDto,
   MatchWithDetailsDto,
+  ReliabilityStatsDto,
   RatingDto,
   RatingHistoryDto,
   SportDto,
+  UserReportDto,
   UserDto,
   VenueDto,
 } from '@sports-matchmaking/shared';
@@ -50,6 +54,16 @@ export type MatchFilters = {
 export type SubmitMatchResultInput = {
   teamAScore: number;
   teamBScore: number;
+};
+
+export type CreateDisputeInput = {
+  reason: string;
+};
+
+export type ReportUserInput = {
+  reportedUserId: string;
+  matchId?: string;
+  reason: string;
 };
 
 type RequestOptions = {
@@ -230,12 +244,41 @@ export const apiClient = {
     });
   },
 
+  markParticipantNoShow(matchId: string, participantId: string): Promise<MatchParticipantDto> {
+    return request(`/matches/${matchId}/participants/${participantId}/no-show`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  disputeMatchResult(matchId: string, resultId: string, reason: string): Promise<MatchResultDisputeDto> {
+    return request(`/matches/${matchId}/results/${resultId}/disputes`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  reportUser(payload: ReportUserInput): Promise<UserReportDto> {
+    return request('/reports/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   getUserRatings(): Promise<RatingDto[]> {
     return request('/me/ratings');
   },
 
   getUserRatingHistory(): Promise<RatingHistoryDto[]> {
     return request('/me/rating-history');
+  },
+
+  getMyReliability(): Promise<ReliabilityStatsDto> {
+    return request('/me/reliability');
+  },
+
+  getUserReliability(userId: string): Promise<ReliabilityStatsDto> {
+    return request(`/users/${userId}/reliability`);
   },
 };
 

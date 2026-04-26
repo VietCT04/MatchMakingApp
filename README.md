@@ -18,6 +18,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Elo helper utilities with unit tests
 - Nearby open-match discovery using venue coordinates and Haversine distance filtering
 - Rule-based ranked discovery (`fitScore`) for personalized match ordering
+- Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -162,13 +163,21 @@ pnpm typecheck
 ## Implemented MVP Backend Flow
 - `GET /matches` supports filters: `sportId`, `format`, `status`, `minRating`, `maxRating`, `startsAfter`, `startsBefore`, `venueId`, `latitude`, `longitude`, `radiusKm`, `ranked`.
 - `GET /matches?ranked=true` adds `fitScore` + `fitBreakdown` and sorts by best fit for the authenticated user.
-- Ranked fit is rule-based (distance, rating fit, time, slot availability), not AI matchmaking.
+- Ranked fit is rule-based (distance, rating fit, participant reliability, time, slot availability), not AI matchmaking.
 - `POST /matches/:id/join` joins a user, prevents duplicates/full/completed/cancelled matches, and marks a full match as `FULL`.
-- `POST /matches/:id/leave` marks a participant as `LEFT` and reopens a full match if space becomes available.
+- `POST /matches/:id/leave` marks a participant as `LEFT`, tracks cancellation stats, and counts late cancellation if the leave happens within 2 hours of match start.
+- `POST /matches/:id/participants/:participantId/no-show` lets the match creator mark a joined participant as `NO_SHOW` after match start.
 - `POST /matches/:id/results` records an unverified match result.
 - `POST /matches/:id/results/:resultId/verify` verifies the result, applies Elo updates, creates `RatingHistory`, and completes the match.
+- `POST /matches/:id/results/:resultId/disputes` lets joined participants raise a dispute for an existing result.
+- `POST /reports/users` creates a user report and updates reported-user reliability stats.
+- `GET /me/reliability` returns current authenticated-user reliability stats.
+- `GET /users/:userId/reliability` returns public reliability summary for a user.
 - `GET /users/:userId/ratings` returns a user's current sport ratings.
 - `GET /users/:userId/rating-history` returns rating change history.
+- Reliability score is separate from Elo:
+  - Elo measures skill/performance.
+  - Reliability measures trust/safety behavior.
 
 ## Implemented MVP Mobile Flow
 - Stable authenticated flow now covers:
@@ -182,10 +191,11 @@ pnpm typecheck
   - distance labels on cards (for example `2.4 km away`)
   - denied permission fallback message while still showing all open matches
 - Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
+- Discover cards also show participant reliability (for ranked payloads) when available.
 - Create Match has sectioned form UX (sport, venue, format, details, date/time, rating range), helper text, backend error display, submit disabling, and success feedback.
-- Match Detail now highlights participant grouping (Team A/B/Unknown), participation state, clearer action button visibility rules, and clearer pending/verified result messaging.
+- Match Detail now highlights participant grouping (Team A/B/Unknown), participation state, participant reliability badges, trust/safety actions (no-show/report/dispute), and clearer pending/verified result messaging.
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
-- Profile screen now has clean fallback text and a clearer ratings summary.
+- Profile screen now has clean fallback text, a clearer ratings summary, and a reliability stats card.
 - Login/Register use `/auth/login` and `/auth/register`.
 - Authenticated API calls attach `Authorization: Bearer <token>`.
 - Create, join, leave, submit result, and verify result derive user identity from JWT.
@@ -198,8 +208,8 @@ pnpm typecheck
 - Chat and push notifications.
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
-- Advanced rating/dispute rules and moderation tooling.
-- Richer ranking signals (availability windows, reliability/no-show history, and learned recommendations).
+- Admin moderation dashboard and dispute resolution tooling.
+- Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).
 
 ## Auth Quick Test
 ```bash

@@ -9,10 +9,12 @@ import { MatchesService } from './matches.service';
 import { SubmitResultDto } from './dto.submit-result';
 import { MatchResultVerificationService } from './match-result-verification.service';
 import { MatchLifecycleService } from './match-lifecycle.service';
+import { MatchDisputeService } from './match-dispute.service';
 import { MatchParticipationService } from './match-participation.service';
 import { MatchQueryService } from './match-query.service';
 import { MatchRankingService } from './match-ranking.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
+import { ReliabilityService } from '../reliability/reliability.service';
 
 const sportId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const venueId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -26,18 +28,21 @@ const describeIntegration = hasDatabaseUrl ? describe : describe.skip;
 describeIntegration('MVP match flow integration', () => {
   const prisma = new PrismaService();
   const rankingService = new MatchRankingService();
+  const reliabilityService = new ReliabilityService(prisma);
   const queryService = new MatchQueryService(prisma, rankingService);
   const lifecycleService = new MatchLifecycleService(prisma, queryService);
-  const participationService = new MatchParticipationService(prisma, queryService, lifecycleService);
+  const participationService = new MatchParticipationService(prisma, queryService, lifecycleService, reliabilityService);
+  const disputeService = new MatchDisputeService(prisma, reliabilityService);
   const resultSubmissionService = new MatchResultSubmissionService(prisma, queryService);
   const matchesService = new MatchesService(
     queryService,
     lifecycleService,
     participationService,
+    disputeService,
     resultSubmissionService,
   );
   const ratingsService = new RatingsService(prisma);
-  const verificationService = new MatchResultVerificationService(ratingsService, lifecycleService);
+  const verificationService = new MatchResultVerificationService(prisma, ratingsService, reliabilityService, lifecycleService);
 
   beforeAll(async () => {
     await prisma.$connect();
@@ -162,6 +167,13 @@ describeIntegration('MVP match flow integration', () => {
         uncertainty: 350,
       })),
     });
+    await prisma.userReliabilityStats.createMany({
+      data: [userAId, userBId, userCId].map((userId) => ({
+        userId,
+        reliabilityScore: 100,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   async function createOpenMatch(id: string, maxPlayers: number) {
@@ -211,6 +223,7 @@ describeIntegration('MVP match flow integration', () => {
     });
     await prisma.match.deleteMany({ where: { OR: [{ id: { in: matchIds } }, { sportId }] } });
     await prisma.userSportRating.deleteMany({ where: { OR: [{ sportId }, { userId: { in: [userAId, userBId, userCId] } }] } });
+    await prisma.userReliabilityStats.deleteMany({ where: { userId: { in: [userAId, userBId, userCId] } } });
     await prisma.venue.deleteMany({ where: { id: venueId } });
     await prisma.sport.deleteMany({ where: { id: sportId } });
     await prisma.user.deleteMany({ where: { id: { in: [userAId, userBId, userCId] } } });

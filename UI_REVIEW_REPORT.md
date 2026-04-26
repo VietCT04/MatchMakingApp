@@ -590,6 +590,13 @@ This section tracks what has been implemented from this review, and what is stil
 - [x] Refactored Create Match screen to use shared components and reduced duplicated chip/input/button code.
 - [x] Refactored Login/Register to use shared primitives and removed duplicated raw styling patterns.
 - [x] Implemented low-priority register fix: added "Already have an account? Log in." link.
+- [x] Added participant identity improvements on Match Detail by showing participant display names and reliability score badges (instead of technical ID-heavy display).
+- [x] Added trust/safety action UI on Match Detail using existing primitives:
+  - creator-only no-show action after match start
+  - dispute submitted result action for participants
+  - report participant action (excluding current user)
+- [x] Added reliability summary card on Profile screen.
+- [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 
 ### Not Done Yet
 
