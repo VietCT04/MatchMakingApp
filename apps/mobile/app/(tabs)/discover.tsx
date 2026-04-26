@@ -92,6 +92,11 @@ export default function DiscoverScreen() {
       <ScreenHeader
         title={token ? 'Best matches for you' : 'Open matches'}
         subtitle={token ? 'Ranked by fit score for your profile.' : 'Browse open matches and join a game.'}
+        action={
+          <AppButton variant="secondary" onPress={() => router.push('/map')}>
+            Map view
+          </AppButton>
+        }
       />
 
       <View style={styles.locationSection}>

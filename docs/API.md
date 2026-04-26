@@ -590,6 +590,7 @@ Validation errors (from `ValidationPipe`) typically return:
 - Mobile routing now uses Expo Router groups:
   - `app/(auth)` for login/register
   - `app/(tabs)` for authenticated app shell (`discover`, `create-match`, `notifications`, `ratings`, `profile`)
+  - `app/map` for map-based nearby discovery
   - `app/match/[id]` for detail flow
   - `app/match-chat/[id]` for match chat
 - Authenticated users are routed to `/discover` and use a persistent bottom-tab shell.
@@ -597,5 +598,6 @@ Validation errors (from `ValidationPipe`) typically return:
 - Normal authenticated flow no longer relies on seeded demo user or mock fallback data in screens.
 - Discover supports optional nearby filtering using Expo Location and sends `latitude`, `longitude`, `radiusKm` to `GET /matches`.
 - Discover sends `ranked=true` for authenticated users and surfaces `fitScore` labels (for example `92% fit`) while preserving nearby filtering and radius controls.
+- Map discovery uses the same nearby ranked request (`GET /matches` with `status=OPEN`, `latitude`, `longitude`, `radiusKm`, `ranked=true`) and relies on `venue.latitude/longitude` for marker placement.
 - Mobile auth flow attempts push-token registration after login/register/session restore.
 - Mobile logout attempts to deactivate known push token via `DELETE /push/devices/:expoPushToken`.

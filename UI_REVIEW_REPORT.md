@@ -619,6 +619,11 @@ This section tracks what has been implemented from this review, and what is stil
   - edit `matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`
   - loading/error/retry and save success/error feedback
   - entry point from Notifications tab
+- [x] Added map discovery screen (`/map`) using `react-native-maps`:
+  - current-location permission flow
+  - ranked nearby fetch using `latitude`, `longitude`, `radiusKm`, `ranked=true`
+  - marker-based match browsing with selected-match preview + deep-link to match detail
+  - Discover integration through a `Map view` action
 - [x] Added reliability summary card on Profile screen.
 - [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 

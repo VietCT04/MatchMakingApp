@@ -97,6 +97,7 @@ sports-matchmaking/
   - Login/register
   - Player profile
   - Match discovery
+  - Map discovery
   - Create match
   - Match detail
   - Match chat
@@ -111,7 +112,7 @@ sports-matchmaking/
 - Chat is implemented as REST polling MVP (no websocket realtime yet).
 - In-app notifications are implemented as database-backed source of truth.
 - Expo push notifications are implemented as a non-blocking delivery channel.
-- Map/location services and geospatial filtering.
+- PostGIS/indexed geospatial filtering for scale (current map/list nearby discovery still uses app-layer Haversine).
 - Payment logic.
 - Admin/moderation dashboard and dispute-resolution workflow.
 
@@ -134,6 +135,8 @@ sports-matchmaking/
 - Discover screen now supports current-location filtering with a radius selector (3/5/10/20 km), and gracefully falls back to showing all open matches if permission is denied.
 - Discover now requests ranked results for authenticated users and shows `NN% fit` labels on match cards.
 - Discover can also show reliability from ranked fit breakdown when present.
+- Map discovery route (`/map`) now uses the existing nearby ranked API (`GET /matches` with `latitude`, `longitude`, `radiusKm`, `ranked=true`) and renders venue markers with a selected-match preview card.
+- Map discovery is discovery-only (visual browse + open match detail), not court booking.
 - Mobile MVP UI is now demo-ready: home flow guidance, polished auth forms, clearer match cards, improved create-match form UX, grouped participants in match detail, clearer result verification messaging, grouped ratings display, and cleaner profile fallbacks.
 - Match detail has been redesigned into reusable sections:
   - hero summary (title, sport/format, venue, date/time, status, rating range, fit/distance/reliability badges)
@@ -230,9 +233,8 @@ sports-matchmaking/
 3. Add websocket realtime chat/notification delivery using existing notification events.
 4. Add advanced notification controls (per-match mute, quiet hours) and push receipt analytics.
 5. Implement payments.
-6. Add map UI for visual nearby discovery.
-7. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
-8. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
+6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
+7. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
 
 ## Local Development Commands
 From repo root:

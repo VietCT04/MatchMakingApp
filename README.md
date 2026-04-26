@@ -18,6 +18,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Elo helper utilities with unit tests
 - Nearby open-match discovery using venue coordinates and Haversine distance filtering
 - Rule-based ranked discovery (`fitScore`) for personalized match ordering
+- Map discovery UI for nearby match browsing (marker-based view)
 - Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
 - Match-specific chat MVP (REST + polling)
 - In-app notifications MVP (database-backed, JWT protected, read/unread workflow)
@@ -208,6 +209,7 @@ pnpm typecheck
   - denied permission fallback message while still showing all open matches
 - Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
 - Discover cards also show participant reliability (for ranked payloads) when available.
+- Map discovery route (`/map`) uses the same nearby ranked query (`latitude`, `longitude`, `radiusKm`, `ranked=true`) and displays venue markers with a selected-match preview card and deep-link to match detail.
 - Create Match has sectioned form UX (sport, venue, format, details, date/time, rating range), helper text, backend error display, submit disabling, and success feedback.
 - Match Detail has been redesigned with reusable sections (hero summary, status timeline, team rosters, action panel, result workflow card, and trust/safety panel).
 - Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
@@ -228,7 +230,6 @@ pnpm typecheck
 - Temporary demo-user normal flow has been removed from navigation and match detail behavior.
 
 ## Remaining TODOs
-- Full map UI and richer map-based nearby discovery.
 - Per-match notification mute controls.
 - Quiet hours / do-not-disturb windows.
 - Push receipt analytics and delivery diagnostics UI.
