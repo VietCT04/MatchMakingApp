@@ -34,6 +34,27 @@ export enum ReportStatus {
   DISMISSED = 'DISMISSED',
 }
 
+export enum NotificationType {
+  MATCH_JOINED = 'MATCH_JOINED',
+  MATCH_LEFT = 'MATCH_LEFT',
+  MATCH_CANCELLED = 'MATCH_CANCELLED',
+  CHAT_MESSAGE = 'CHAT_MESSAGE',
+  RESULT_SUBMITTED = 'RESULT_SUBMITTED',
+  RESULT_VERIFIED = 'RESULT_VERIFIED',
+  RATING_UPDATED = 'RATING_UPDATED',
+  DISPUTE_CREATED = 'DISPUTE_CREATED',
+  REPORT_CREATED = 'REPORT_CREATED',
+  NO_SHOW_MARKED = 'NO_SHOW_MARKED',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum PushDevicePlatform {
+  IOS = 'IOS',
+  ANDROID = 'ANDROID',
+  WEB = 'WEB',
+  UNKNOWN = 'UNKNOWN',
+}
+
 export interface UserDto {
   id: string;
   email: string;
@@ -164,6 +185,44 @@ export interface ChatMessageDto {
   updatedAt: string;
   deletedAt?: string | null;
   sender: ChatMessageSenderDto;
+}
+
+export interface NotificationDto {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  data?: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationUnreadCountDto {
+  count: number;
+}
+
+export interface PushDeviceDto {
+  id: string;
+  userId: string;
+  expoPushToken: string;
+  platform: PushDevicePlatform | null;
+  deviceName: string | null;
+  isActive: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreferenceDto {
+  id: string;
+  userId: string;
+  matchUpdates: boolean;
+  chatMessages: boolean;
+  results: boolean;
+  trustSafety: boolean;
+  ratingUpdates: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RatingDto {

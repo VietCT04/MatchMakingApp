@@ -1,14 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ReportStatus } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { NotificationType, ReportStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReliabilityService } from '../reliability/reliability.service';
 import { CreateUserReportDto } from './dto.create-user-report';
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly reliabilityService: ReliabilityService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createUserReport(reporterUserId: string, dto: CreateUserReportDto) {
@@ -30,7 +34,7 @@ export class ReportsService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const report = await this.prisma.$transaction(async (tx) => {
       const report = await tx.userReport.create({
         data: {
           reportedUserId: dto.reportedUserId,
@@ -45,5 +49,27 @@ export class ReportsService {
 
       return report;
     });
+
+    try {
+      await this.notificationsService.createNotification(
+        reporterUserId,
+        NotificationType.REPORT_CREATED,
+        'Report submitted',
+        'Your report was submitted and is now open for review.',
+        {
+          reportId: report.id,
+          matchId: report.matchId,
+          dedupeKey: `report:${report.id}:reporter:${reporterUserId}`,
+        },
+      );
+    } catch (notifyError) {
+      this.logger.warn(
+        `Failed to create report notification for reporter ${reporterUserId}: ${
+          notifyError instanceof Error ? notifyError.message : 'unknown error'
+        }`,
+      );
+    }
+
+    return report;
   }
 }

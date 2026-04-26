@@ -11,9 +11,10 @@ import { MatchRankingService } from './match-ranking.service';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { ReliabilityModule } from '../reliability/reliability.module';
 import { MatchDisputeService } from './match-dispute.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [RatingsModule, ReliabilityModule],
+  imports: [RatingsModule, ReliabilityModule, NotificationsModule],
   controllers: [MatchesController],
   providers: [
     MatchesService,

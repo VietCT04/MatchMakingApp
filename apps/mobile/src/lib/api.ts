@@ -6,6 +6,11 @@ import type {
   MatchResultDisputeDto,
   MatchResultDto,
   MatchWithDetailsDto,
+  NotificationPreferenceDto,
+  NotificationDto,
+  NotificationUnreadCountDto,
+  PushDeviceDto,
+  PushDevicePlatform,
   ReliabilityStatsDto,
   RatingDto,
   RatingHistoryDto,
@@ -70,6 +75,17 @@ export type ReportUserInput = {
 export type GetMatchMessagesParams = {
   limit?: number;
   before?: string;
+};
+
+export type GetNotificationsParams = {
+  limit?: number;
+  unreadOnly?: boolean;
+};
+
+export type RegisterPushDeviceInput = {
+  expoPushToken: string;
+  platform?: PushDevicePlatform;
+  deviceName?: string;
 };
 
 type RequestOptions = {
@@ -287,6 +303,70 @@ export const apiClient = {
     return request(`/matches/${matchId}/chat/messages`, {
       method: 'POST',
       body: JSON.stringify({ body }),
+    });
+  },
+
+  getNotifications(params: GetNotificationsParams = {}): Promise<{ items: NotificationDto[] }> {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    if (params.unreadOnly !== undefined) {
+      query.set('unreadOnly', String(params.unreadOnly));
+    }
+    const suffix = query.toString();
+    return request(`/notifications${suffix ? `?${suffix}` : ''}`);
+  },
+
+  getNotificationUnreadCount(): Promise<NotificationUnreadCountDto> {
+    return request('/notifications/unread-count');
+  },
+
+  markNotificationRead(notificationId: string): Promise<NotificationDto> {
+    return request(`/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+    });
+  },
+
+  markAllNotificationsRead(): Promise<NotificationUnreadCountDto> {
+    return request('/notifications/read-all', {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+    });
+  },
+
+  registerPushDevice(payload: RegisterPushDeviceInput): Promise<PushDeviceDto> {
+    return request('/push/devices', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deactivatePushDevice(expoPushToken: string): Promise<{ success: boolean }> {
+    const encoded = encodeURIComponent(expoPushToken);
+    return request(`/push/devices/${encoded}`, {
+      method: 'DELETE',
+      body: JSON.stringify({}),
+    });
+  },
+
+  getMyPushDevices(): Promise<PushDeviceDto[]> {
+    return request('/push/devices');
+  },
+
+  getMyNotificationPreferences(): Promise<NotificationPreferenceDto> {
+    return request('/me/notification-preferences');
+  },
+
+  updateMyNotificationPreferences(
+    payload: Partial<
+      Pick<NotificationPreferenceDto, 'matchUpdates' | 'chatMessages' | 'results' | 'trustSafety' | 'ratingUpdates'>
+    >,
+  ): Promise<NotificationPreferenceDto> {
+    return request('/me/notification-preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     });
   },
 

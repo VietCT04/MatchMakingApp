@@ -609,6 +609,11 @@ This section tracks what has been implemented from this review, and what is stil
   - match detail entry button for creator/participants
   - REST polling refresh pattern (manual + interval while focused)
   - aligned sender/current-user message bubbles with shared primitives
+- [x] Added in-app Notifications tab MVP using shared primitives:
+  - unread count header + mark all as read
+  - read/unread list state
+  - focus refresh + manual refresh
+  - tap-to-open notification with match deep-link support
 - [x] Added reliability summary card on Profile screen.
 - [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 

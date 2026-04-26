@@ -20,6 +20,8 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Rule-based ranked discovery (`fitScore`) for personalized match ordering
 - Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
 - Match-specific chat MVP (REST + polling)
+- In-app notifications MVP (database-backed, JWT protected, read/unread workflow)
+- Expo push notifications MVP (delivery layer built on in-app notifications)
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -176,6 +178,16 @@ pnpm typecheck
 - `GET /users/:userId/reliability` returns public reliability summary for a user.
 - `GET /matches/:id/chat/messages` returns match chat messages for match creator/participants.
 - `POST /matches/:id/chat/messages` sends a match chat message for eligible users.
+- `GET /notifications` returns current-user notifications with read/unread filtering.
+- `GET /notifications/unread-count` returns unread notification count.
+- `PATCH /notifications/:id/read` marks a single notification as read.
+- `PATCH /notifications/read-all` marks all current-user notifications as read.
+- `POST /push/devices` registers/upserts Expo push token for current user.
+- `DELETE /push/devices/:expoPushToken` deactivates current-user push token.
+- `GET /push/devices` lists current-user active push devices.
+- `GET /me/notification-preferences` and `PATCH /me/notification-preferences` manage backend push preference flags.
+- Notification records remain the source of truth; Expo push is a best-effort delivery channel.
+- Push delivery failures do not block core match/chat/result/trust workflows.
 - `GET /users/:userId/ratings` returns a user's current sport ratings.
 - `GET /users/:userId/rating-history` returns rating change history.
 - Reliability score is separate from Elo:
@@ -200,6 +212,9 @@ pnpm typecheck
 - Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
 - Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
 - Match chat screen supports REST polling MVP (open chat from match detail, read/send messages, manual refresh, and periodic refresh while focused).
+- Notifications tab shows unread count, list/read state, mark-all-as-read, and deep-link to match detail when `data.matchId` is present.
+- Mobile auth flow now attempts push registration after session restore/login/register and deactivates known token on logout.
+- Push notification tap navigates to match detail when `matchId` exists, otherwise to Notifications tab.
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
 - Profile screen now has clean fallback text, a clearer ratings summary, and a reliability stats card.
 - Login/Register use `/auth/login` and `/auth/register`.
@@ -211,11 +226,12 @@ pnpm typecheck
 
 ## Remaining TODOs
 - Full map UI and richer map-based nearby discovery.
-- Chat and push notifications.
+- Advanced push UX/preferences screen in mobile (basic backend preferences are implemented).
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
 - Admin moderation dashboard and dispute resolution tooling.
-- WebSocket/realtime chat and push notifications for message delivery.
+- WebSocket/realtime chat delivery.
+- WebSocket/realtime notification delivery.
 - Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).
 
 ## Auth Quick Test

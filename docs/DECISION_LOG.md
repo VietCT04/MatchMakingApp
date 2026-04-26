@@ -1,5 +1,53 @@
 # Decision Log
 
+## 2026-04-26: Expo push notifications as delivery layer over notification records
+
+Decision:
+- Keep `Notification` rows as the primary source of truth.
+- Add `PushDevice` model and JWT-protected push device management APIs.
+- Add `NotificationPreference` model with backend-level category flags.
+- Extend `NotificationsService` to trigger push delivery after notification creation.
+- Keep push sending non-blocking: notification DB writes and business workflows must succeed even if push fails.
+
+Reasoning:
+- This keeps core product state deterministic and queryable from the database.
+- Delivery channels (in-app list, Expo push now, websocket later) can reuse the same event creation path.
+- Category preferences can be enforced server-side before sending push.
+
+Follow-up:
+- Add mobile settings UI for notification preferences.
+- Add push ticket receipt handling and deeper delivery observability.
+- Add websocket realtime notification delivery for active sessions.
+
+## 2026-04-26: Database-backed in-app notifications MVP
+
+Decision:
+- Implement in-app notifications as a persisted backend domain (`Notification` table + `NotificationType` enum).
+- Expose JWT-protected notification APIs:
+  - `GET /notifications`
+  - `GET /notifications/unread-count`
+  - `PATCH /notifications/:id/read`
+  - `PATCH /notifications/read-all`
+- Generate notifications from service-layer events:
+  - match join/leave
+  - chat message
+  - result submitted/verified
+  - rating updated
+  - dispute created
+  - report submitted (reporter confirmation)
+  - no-show marked
+- Keep delivery model as REST in-app UX first (no Expo push, no websocket realtime yet).
+
+Reasoning:
+- A durable notification log creates a single event foundation for future delivery channels.
+- Service-layer generation avoids controller bloat and keeps event logic near business rules.
+- MVP can deliver value immediately via unread/read UX without infrastructure-heavy realtime systems.
+
+Follow-up:
+- Add Expo push delivery pipeline that reuses notification creation events.
+- Add websocket realtime updates for active sessions.
+- Add user notification preferences (mute types, quiet hours, delivery channels).
+
 ## 2026-04-26: Trust/safety reliability scoring and moderation-lite workflows
 
 Decision:

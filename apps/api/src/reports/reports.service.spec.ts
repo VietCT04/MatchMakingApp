@@ -9,7 +9,8 @@ describe('ReportsService', () => {
       $transaction: jest.fn(),
     };
     const reliabilityService = { incrementReports: jest.fn() };
-    const service = new ReportsService(prisma as any, reliabilityService as any);
+    const notificationsService = { createNotification: jest.fn() };
+    const service = new ReportsService(prisma as any, reliabilityService as any, notificationsService as any);
 
     await expect(
       service.createUserReport('user-1', {

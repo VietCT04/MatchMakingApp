@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MatchParticipantStatus, MatchStatus } from '@prisma/client';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { MatchParticipantStatus, MatchStatus, NotificationType } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReliabilityService } from '../reliability/reliability.service';
 import { JoinMatchDto } from './dto.join-match';
@@ -10,11 +11,14 @@ import { toPrismaTeam } from './match-enum.mapper';
 
 @Injectable()
 export class MatchParticipationService {
+  private readonly logger = new Logger(MatchParticipationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly queryService: MatchQueryService,
     private readonly lifecycleService: MatchLifecycleService,
     private readonly reliabilityService: ReliabilityService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async join(matchId: string, userId: string, dto: JoinMatchDto) {
@@ -55,6 +59,29 @@ export class MatchParticipationService {
       await this.lifecycleService.setFull(matchId);
     }
 
+    if (match.createdByUserId !== userId) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { displayName: true },
+        });
+        const displayName = user?.displayName ?? 'A player';
+        await this.notificationsService.createNotification(
+          match.createdByUserId,
+          NotificationType.MATCH_JOINED,
+          'New player joined',
+          `${displayName} joined ${match.title}`,
+          {
+            matchId,
+            userId,
+            dedupeKey: `match:${matchId}:join:${userId}`,
+          },
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to create join notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+      }
+    }
+
     return participant;
   }
 
@@ -80,6 +107,29 @@ export class MatchParticipationService {
 
     if (match.status === MatchStatus.FULL) {
       await this.lifecycleService.setOpen(matchId);
+    }
+
+    if (match.createdByUserId !== userId) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { displayName: true },
+        });
+        const displayName = user?.displayName ?? 'A player';
+        await this.notificationsService.createNotification(
+          match.createdByUserId,
+          NotificationType.MATCH_LEFT,
+          'Player left match',
+          `${displayName} left ${match.title}`,
+          {
+            matchId,
+            userId,
+            dedupeKey: `match:${matchId}:left:${userId}`,
+          },
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to create leave notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+      }
     }
 
     return updatedParticipant;
@@ -108,7 +158,7 @@ export class MatchParticipationService {
       throw new BadRequestException('Only joined participants can be marked as no-show');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedParticipant = await this.prisma.$transaction(async (tx) => {
       const updatedParticipant = await tx.matchParticipant.update({
         where: { id: participant.id },
         data: { status: MatchParticipantStatus.NO_SHOW },
@@ -116,5 +166,22 @@ export class MatchParticipationService {
       await this.reliabilityService.incrementNoShow(participant.userId, tx);
       return updatedParticipant;
     });
+
+    try {
+      await this.notificationsService.createNotification(
+        participant.userId,
+        NotificationType.NO_SHOW_MARKED,
+        'Marked as no-show',
+        `You were marked as no-show for ${match.title}`,
+        {
+          matchId,
+          dedupeKey: `match:${matchId}:no-show:${participant.id}`,
+        },
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to create no-show notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+
+    return updatedParticipant;
   }
 }

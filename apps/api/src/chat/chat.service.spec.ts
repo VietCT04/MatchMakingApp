@@ -7,6 +7,7 @@ function createMatchRecord(params: {
   status?: MatchStatus;
   createdByUserId?: string;
   participantStatus?: MatchParticipantStatus | null;
+  participantUserId?: string;
 }) {
   const matchId = params.matchId ?? 'match-1';
   const createdByUserId = params.createdByUserId ?? 'creator-1';
@@ -18,12 +19,15 @@ function createMatchRecord(params: {
     participants:
       params.participantStatus === undefined || params.participantStatus === null
         ? []
-        : [{ status: params.participantStatus }],
+        : [{ status: params.participantStatus, userId: params.participantUserId ?? 'player-1' }],
   };
 }
 
 describe('ChatService', () => {
   function createService(matchRecord: any) {
+    const notificationsService = {
+      createManyNotifications: jest.fn().mockResolvedValue([]),
+    };
     const prisma = {
       match: {
         findUnique: jest.fn().mockResolvedValue(matchRecord),
@@ -47,7 +51,8 @@ describe('ChatService', () => {
     };
     return {
       prisma,
-      service: new ChatService(prisma as any),
+      notificationsService,
+      service: new ChatService(prisma as any, notificationsService as any),
     };
   }
 
@@ -78,6 +83,33 @@ describe('ChatService', () => {
     await expect(
       service.sendMessage('match-1', 'player-1', { body: 'See you at 7pm' }),
     ).resolves.toEqual(expect.objectContaining({ body: 'See you at 7pm' }));
+  });
+
+  it('chat message creates notifications for other participants and creator but not sender', async () => {
+    const { service, notificationsService } = createService({
+      id: 'match-1',
+      title: 'Evening Doubles',
+      status: MatchStatus.OPEN,
+      createdByUserId: 'creator-1',
+      participants: [
+        { status: MatchParticipantStatus.JOINED, userId: 'player-1' },
+        { status: MatchParticipantStatus.JOINED, userId: 'player-2' },
+        { status: MatchParticipantStatus.JOINED, userId: 'player-3' },
+      ],
+    });
+
+    await service.sendMessage('match-1', 'player-1', { body: 'See you soon' });
+
+    expect(notificationsService.createManyNotifications).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ userId: 'creator-1', type: 'CHAT_MESSAGE' }),
+        expect.objectContaining({ userId: 'player-2', type: 'CHAT_MESSAGE' }),
+        expect.objectContaining({ userId: 'player-3', type: 'CHAT_MESSAGE' }),
+      ]),
+    );
+    expect(notificationsService.createManyNotifications).not.toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ userId: 'player-1' })]),
+    );
   });
 
   it('match creator can read and send messages', async () => {

@@ -30,9 +30,11 @@ apps/mobile/app/
     _layout.tsx
     discover.tsx
     create-match.tsx
+    notifications.tsx
     ratings.tsx
     profile.tsx
   match/[id].tsx
+  match-chat/[id].tsx
   _layout.tsx
 ```
 
@@ -43,7 +45,7 @@ apps/mobile/app/
 - Use shared enums/DTO shapes from `packages/shared` where practical.
 - Surface loading/error/empty states when backend data is unavailable.
 - Keep shared visual primitives in `apps/mobile/src/components` to reduce style duplication.
-- Keep authenticated shell navigation in Expo Router tabs for Discover/Create/Ratings/Profile.
+- Keep authenticated shell navigation in Expo Router tabs for Discover/Create/Notifications/Ratings/Profile.
 
 ## Backend Responsibility
 - Expose REST endpoints.
@@ -52,6 +54,8 @@ apps/mobile/app/
 - Keep business logic and orchestration in services.
 - Access persistence only through Prisma service.
 - Match chat is implemented as REST endpoints + permission checks in `ChatService` (polling MVP, no websocket layer yet).
+- In-app notifications are implemented as database-backed events in `NotificationsService` with per-user read/unread state.
+- Expo push notifications are a delivery channel driven by `NotificationsService` + `PushService`.
 
 ## Shared Package Responsibility
 - Centralize reusable enums and DTO interfaces:
@@ -61,11 +65,13 @@ apps/mobile/app/
   - `Team`
   - `DisputeStatus`
   - `ReportStatus`
+  - `NotificationType`
+  - `PushDevicePlatform`
   - `UserDto`, `SportDto`, `MatchDto`, `RatingDto`
 - Reduce type drift between mobile and API.
 
 ## Database Responsibility
-- Store durable records for users, sports, ratings, venues, matches, participants, results, rating history, reliability stats, disputes, and reports.
+- Store durable records for users, sports, ratings, venues, matches, participants, results, rating history, reliability stats, disputes, reports, chat messages, notifications, push devices, and notification preferences.
 - Enforce relational consistency via foreign keys and unique constraints.
 
 ## Request Flow Example
@@ -83,11 +89,25 @@ apps/mobile/app/
 4. Sending uses `POST /matches/:id/chat/messages`.
 5. Backend enforces chat permissions and returns message with sender summary.
 
+## Notifications MVP Flow
+1. Domain services emit notification events when core actions occur (join/leave/chat/result/rating/dispute/report/no-show).
+2. `NotificationsService` stores per-user notifications in PostgreSQL.
+3. Mobile Notifications tab fetches notifications and unread count via REST.
+4. Users mark one or all notifications as read.
+5. Notification tap can deep-link to match detail using `data.matchId`.
+
+## Push Delivery Flow
+1. `NotificationsService` creates database notification rows (source of truth).
+2. After create, it calls `PushService.deliverNotification(...)`.
+3. `PushService` loads active push devices and preference flags for the target user.
+4. Expo push payload is sent with `notificationId`, `type`, and optional `matchId/resultId/chatMessageId`.
+5. Push failures are logged and do not fail the originating workflow.
+
 ## Future Architecture
 - Auth provider
   - Current MVP uses email/password JWT auth; a future provider can replace or augment it.
 - Push notifications
-  - Add job/event pipeline for invites, reminders, and cancellations.
+  - Expand Expo push delivery with receipts, retries, and preference UX.
 - Realtime chat
   - Add websocket or SSE channel scoped to match rooms.
 - Payment

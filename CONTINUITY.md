@@ -9,7 +9,7 @@ This repository contains the first MVP scaffold for a racket-sports matchmaking 
 - Backend has NestJS modules with REST CRUD skeletons for key resources.
 - Prisma schema is defined for users, sports, venues, matches, participation, results, and rating history.
 - Elo helper and unit tests exist for core rating math.
-- Chat, push, maps, and payments are placeholders/TODO only. Auth is JWT-based for MVP.
+- Maps and payments are placeholders/TODO only. Auth is JWT-based for MVP.
 
 ## Tech Stack
 - Package manager: pnpm workspaces
@@ -62,6 +62,18 @@ sports-matchmaking/
 - Chat endpoints:
   - `GET /matches/:id/chat/messages`
   - `POST /matches/:id/chat/messages`
+- Notification endpoints:
+  - `GET /notifications`
+  - `GET /notifications/unread-count`
+  - `PATCH /notifications/:id/read`
+  - `PATCH /notifications/read-all`
+- Push endpoints:
+  - `POST /push/devices`
+  - `DELETE /push/devices/:expoPushToken`
+  - `GET /push/devices`
+- Notification preferences endpoints:
+  - `GET /me/notification-preferences`
+  - `PATCH /me/notification-preferences`
 - Reliability endpoints:
   - `GET /me/reliability`
   - `GET /users/:userId/reliability`
@@ -87,14 +99,17 @@ sports-matchmaking/
   - Match discovery
   - Create match
   - Match detail
+  - Match chat
+  - Notifications
   - Rating
 - Mobile API client in `apps/mobile/src/lib/api.ts` calls the backend through centralized config.
 
 ## Incomplete Features
 - Production auth hardening beyond MVP JWT.
 - Better result UX and verified-result permissions.
-- Chat is now implemented as REST polling MVP (no websocket realtime yet).
-- Push notification integration.
+- Chat is implemented as REST polling MVP (no websocket realtime yet).
+- In-app notifications are implemented as database-backed source of truth.
+- Expo push notifications are implemented as a non-blocking delivery channel.
 - Map/location services and geospatial filtering.
 - Payment logic.
 - Admin/moderation dashboard and dispute-resolution workflow.
@@ -132,9 +147,17 @@ sports-matchmaking/
   - manual refresh
   - focused interval polling
   - send-and-refresh flow
+- Notifications tab (`/notifications`) provides:
+  - unread count
+  - mark all as read
+  - read/unread visual state
+  - refresh on focus
+  - tap to mark as read and open match detail when `data.matchId` exists
+- Mobile auth now attempts push token registration after login/register/session restore, and deactivates known token on logout.
+- Push notification taps navigate to match detail when `matchId` exists, otherwise to Notifications tab.
 - Profile includes a reliability stats card (score, completions, cancellations, late cancellations, no-shows, disputes, reports).
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
-- TODO markers already exist for auth, chat, maps, push, and payment areas.
+- TODO markers already exist for auth, chat, maps, and payment areas.
 
 ## Database Notes
 - Prisma schema file: `apps/api/prisma/schema.prisma`.
@@ -165,6 +188,11 @@ sports-matchmaking/
   - read: match creator or any participant status
   - send: match creator (unless cancelled) or JOINED participant
   - send blocked for cancelled match, LEFT participant, and NO_SHOW participant
+- Notification events are created in service layer for match/chat/result/rating/trust events.
+- Notification creation failures are non-blocking for core workflows.
+- Push sending failures are non-blocking and do not roll back core workflows.
+- Invalid Expo tokens are deactivated when Expo returns `DeviceNotRegistered`.
+- Push delivery respects backend notification preferences (`matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`).
 - Current fit weights:
   - distance 30%
   - rating fit 30%
@@ -194,7 +222,7 @@ sports-matchmaking/
 ## Next Recommended Tasks
 1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
 2. Move nearby filtering from app-layer Haversine to PostGIS/indexed geospatial queries.
-3. Add websocket realtime chat and push notifications.
+3. Add websocket realtime chat/notification delivery using existing notification events.
 4. Implement payments.
 5. Add map UI for visual nearby discovery.
 6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
@@ -250,5 +278,5 @@ pnpm typecheck
 - Keep reliability logic isolated in the reliability service.
 - Do not mix Elo (skill) and reliability (trust/safety) concerns.
 - Keep the scaffold simple and extensible.
-- Do not implement payment, chat, maps, push notifications, or AI matchmaking unless specifically requested.
+- Do not implement payment, maps, or AI matchmaking unless specifically requested.
 - Update `CONTINUITY.md` after every major code change.

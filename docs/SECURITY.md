@@ -21,6 +21,8 @@
 - Passwords are hashed with bcrypt before storage.
 - Protected write endpoints derive identity from the token instead of trusting request body user IDs.
 - Mobile stores access tokens with Expo SecureStore.
+- Push token registration/deactivation endpoints are JWT-protected and scoped to the current user.
+- Notification listing/read APIs are per-user only; cross-user notification access is blocked.
 
 ## Future Auth Requirements (TODO)
 - Add refresh tokens or session revocation.
@@ -31,6 +33,14 @@
 ## Rate Limiting (TODO)
 - Add request throttling for login, registration, and write endpoints.
 - Add abuse detection around match spam and suspicious behavior.
+- Add throttling/abuse controls for push token registration spam and notification-heavy actions.
+
+## Push Notification Security Notes
+- In-app `Notification` records remain the source of truth; push is a best-effort delivery layer.
+- Push delivery failures must not block core workflows (join, chat, result, trust/safety actions).
+- Invalid Expo tokens are deactivated when Expo returns `DeviceNotRegistered`.
+- Never expose another user's push tokens from APIs.
+- Notification preference changes are JWT-protected under `/me/notification-preferences`.
 
 ## Payment Security (TODO)
 - If payments are added, use PCI-compliant provider.

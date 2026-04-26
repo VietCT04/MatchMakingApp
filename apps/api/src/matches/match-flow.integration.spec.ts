@@ -15,6 +15,8 @@ import { MatchQueryService } from './match-query.service';
 import { MatchRankingService } from './match-ranking.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
 import { ReliabilityService } from '../reliability/reliability.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../push/push.service';
 
 const sportId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const venueId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -29,11 +31,19 @@ describeIntegration('MVP match flow integration', () => {
   const prisma = new PrismaService();
   const rankingService = new MatchRankingService();
   const reliabilityService = new ReliabilityService(prisma);
+  const pushService = new PushService(prisma);
+  const notificationsService = new NotificationsService(prisma, pushService);
   const queryService = new MatchQueryService(prisma, rankingService);
   const lifecycleService = new MatchLifecycleService(prisma, queryService);
-  const participationService = new MatchParticipationService(prisma, queryService, lifecycleService, reliabilityService);
-  const disputeService = new MatchDisputeService(prisma, reliabilityService);
-  const resultSubmissionService = new MatchResultSubmissionService(prisma, queryService);
+  const participationService = new MatchParticipationService(
+    prisma,
+    queryService,
+    lifecycleService,
+    reliabilityService,
+    notificationsService,
+  );
+  const disputeService = new MatchDisputeService(prisma, reliabilityService, notificationsService);
+  const resultSubmissionService = new MatchResultSubmissionService(prisma, queryService, notificationsService);
   const matchesService = new MatchesService(
     queryService,
     lifecycleService,
@@ -42,7 +52,13 @@ describeIntegration('MVP match flow integration', () => {
     resultSubmissionService,
   );
   const ratingsService = new RatingsService(prisma);
-  const verificationService = new MatchResultVerificationService(prisma, ratingsService, reliabilityService, lifecycleService);
+  const verificationService = new MatchResultVerificationService(
+    prisma,
+    ratingsService,
+    reliabilityService,
+    lifecycleService,
+    notificationsService,
+  );
 
   beforeAll(async () => {
     await prisma.$connect();

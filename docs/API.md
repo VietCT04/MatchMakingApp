@@ -389,6 +389,123 @@ Rules:
 - creates report with `OPEN` status
 - increments reported-user reliability report count
 
+## Notifications Endpoints
+### `GET /notifications`
+Requires `Authorization: Bearer <token>`.
+
+Query params:
+- `limit` (optional, default `30`, max `100`)
+- `unreadOnly` (optional boolean)
+
+Response:
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "type": "CHAT_MESSAGE",
+      "title": "New chat message",
+      "body": "Alex: See you at 7pm",
+      "data": {
+        "matchId": "uuid",
+        "chatMessageId": "uuid"
+      },
+      "readAt": null,
+      "createdAt": "2026-04-26T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `GET /notifications/unread-count`
+Requires `Authorization: Bearer <token>`.
+
+Response:
+```json
+{
+  "count": 3
+}
+```
+
+### `PATCH /notifications/:id/read`
+Requires `Authorization: Bearer <token>`.
+Marks one notification as read.
+Users cannot mark another user's notification.
+
+### `PATCH /notifications/read-all`
+Requires `Authorization: Bearer <token>`.
+Marks all current-user unread notifications as read.
+
+Notification generation events (MVP):
+- match join / leave
+- chat message
+- result submitted / verified
+- rating updated
+- dispute created
+- report submitted (reporter confirmation only)
+- no-show marked
+
+Notes:
+- Notifications are database-backed in-app events.
+- Expo push notifications are implemented as a delivery layer on top of notification records.
+- Push failures are non-blocking and do not prevent in-app notification creation.
+
+## Push Devices Endpoints
+### `POST /push/devices`
+Requires `Authorization: Bearer <token>`.
+
+Request:
+```json
+{
+  "expoPushToken": "ExponentPushToken[...]",
+  "platform": "IOS",
+  "deviceName": "iPhone"
+}
+```
+
+Behavior:
+- upserts token
+- associates token with current user
+- sets `isActive=true`
+- updates `lastSeenAt`
+
+### `DELETE /push/devices/:expoPushToken`
+Requires `Authorization: Bearer <token>`.
+
+Behavior:
+- deactivates current-user token (`isActive=false`)
+- users cannot deactivate another user's token
+
+### `GET /push/devices`
+Requires `Authorization: Bearer <token>`.
+Returns current user's active push devices.
+
+## Notification Preferences Endpoints
+### `GET /me/notification-preferences`
+Requires `Authorization: Bearer <token>`.
+
+### `PATCH /me/notification-preferences`
+Requires `Authorization: Bearer <token>`.
+
+Request (all optional):
+```json
+{
+  "matchUpdates": true,
+  "chatMessages": true,
+  "results": true,
+  "trustSafety": true,
+  "ratingUpdates": true
+}
+```
+
+Push preference mapping:
+- `CHAT_MESSAGE` -> `chatMessages`
+- `MATCH_JOINED`, `MATCH_LEFT`, `MATCH_CANCELLED` -> `matchUpdates`
+- `RESULT_SUBMITTED`, `RESULT_VERIFIED` -> `results`
+- `DISPUTE_CREATED`, `REPORT_CREATED`, `NO_SHOW_MARKED` -> `trustSafety`
+- `RATING_UPDATED` -> `ratingUpdates`
+- `SYSTEM` -> always allowed
+
 ## Ratings Endpoints
 ### `GET /ratings/defaults`
 Response:
@@ -452,8 +569,7 @@ Validation errors (from `ValidationPipe`) typically return:
 ```
 
 ## TODO API Endpoints
-- Chat endpoints or realtime gateway contract
-- Notification preferences endpoints
+- Realtime websocket gateway contract for chat/notifications
 - Dedicated match-discovery endpoint if `GET /matches` filtering becomes too broad
 
 ## Related Docs
@@ -469,10 +585,13 @@ Validation errors (from `ValidationPipe`) typically return:
 - `AuthContext` restores token on startup, refreshes current user via `/me` (fallback `/auth/me`), and clears token/session on `401`.
 - Mobile routing now uses Expo Router groups:
   - `app/(auth)` for login/register
-  - `app/(tabs)` for authenticated app shell (`discover`, `create-match`, `ratings`, `profile`)
+  - `app/(tabs)` for authenticated app shell (`discover`, `create-match`, `notifications`, `ratings`, `profile`)
   - `app/match/[id]` for detail flow
+  - `app/match-chat/[id]` for match chat
 - Authenticated users are routed to `/discover` and use a persistent bottom-tab shell.
 - Shared mobile UI primitives live in `apps/mobile/src/components` (screen/layout, button/input/card/badge/chip, loading/error/empty states).
 - Normal authenticated flow no longer relies on seeded demo user or mock fallback data in screens.
 - Discover supports optional nearby filtering using Expo Location and sends `latitude`, `longitude`, `radiusKm` to `GET /matches`.
 - Discover sends `ranked=true` for authenticated users and surfaces `fitScore` labels (for example `92% fit`) while preserving nearby filtering and radius controls.
+- Mobile auth flow attempts push-token registration after login/register/session restore.
+- Mobile logout attempts to deactivate known push token via `DELETE /push/devices/:expoPushToken`.

@@ -2,6 +2,8 @@ import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useSt
 import * as SecureStore from 'expo-secure-store';
 import type { UserDto } from '@sports-matchmaking/shared';
 import { ApiError, apiClient, setAccessToken, setUnauthorizedHandler } from '../lib/api';
+import { setupNotificationTapNavigation } from '../notifications/notificationNavigation';
+import { registerForPushNotifications } from '../notifications/registerForPushNotifications';
 
 const TOKEN_KEY = 'sports-matchmaking.accessToken';
 
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
   async function clearSession() {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
@@ -49,6 +52,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }
 
+  async function registerPushForCurrentUser() {
+    try {
+      const registration = await registerForPushNotifications();
+      if (!registration.expoPushToken) {
+        return;
+      }
+      await apiClient.registerPushDevice({
+        expoPushToken: registration.expoPushToken,
+        platform: registration.platform,
+      });
+      setExpoPushToken(registration.expoPushToken);
+    } catch {
+      // Push registration should not block auth flow.
+    }
+  }
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       clearSession().catch(() => undefined);
@@ -62,7 +81,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
         setAccessToken(storedToken);
         setToken(storedToken);
-        await refreshMeInternal();
+        const me = await refreshMeInternal();
+        if (me) {
+          await registerPushForCurrentUser();
+        }
       } catch {
         await clearSession();
       } finally {
@@ -77,6 +99,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  useEffect(() => {
+    const cleanupPushNavigation = setupNotificationTapNavigation(() => Boolean(token));
+    return () => {
+      cleanupPushNavigation();
+    };
+  }, [token]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -85,21 +114,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
       async login(email: string, password: string) {
         const response = await apiClient.login({ email, password });
         await persistToken(response.accessToken);
-        await refreshMeInternal();
+        const me = await refreshMeInternal();
+        if (me) {
+          await registerPushForCurrentUser();
+        }
       },
       async register(email: string, password: string, displayName: string) {
         const response = await apiClient.register({ email, password, displayName });
         await persistToken(response.accessToken);
-        await refreshMeInternal();
+        const me = await refreshMeInternal();
+        if (me) {
+          await registerPushForCurrentUser();
+        }
       },
       async logout() {
+        if (expoPushToken) {
+          try {
+            await apiClient.deactivatePushDevice(expoPushToken);
+          } catch {
+            // Deactivation failures should not block logout.
+          }
+        }
         await clearSession();
+        setExpoPushToken(null);
       },
       async refreshMe() {
         return refreshMeInternal();
       },
     }),
-    [authLoading, token, user],
+    [authLoading, expoPushToken, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

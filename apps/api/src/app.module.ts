@@ -10,6 +10,8 @@ import { AuthModule } from './auth/auth.module';
 import { ReliabilityModule } from './reliability/reliability.module';
 import { ReportsModule } from './reports/reports.module';
 import { ChatModule } from './chat/chat.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { ChatModule } from './chat/chat.module';
     ReliabilityModule,
     ReportsModule,
     ChatModule,
+    PushModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
