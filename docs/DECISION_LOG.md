@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-04-27: PostGIS-based nearby match discovery
+
+Decision:
+- Move nearby filtering and distance calculation for `GET /matches` from app-layer Haversine to PostGIS SQL.
+- Keep `Venue.latitude` and `Venue.longitude` in Prisma for compatibility with existing CRUD and mobile payloads.
+- Add PostGIS migration to:
+  - enable extension: `CREATE EXTENSION IF NOT EXISTS postgis`
+  - create GIST expression index on venue coordinates
+- Keep API contract unchanged (`latitude`, `longitude`, `radiusKm` query params and `distanceKm` in response).
+- Keep a narrow Haversine fallback path only when PostGIS functions are unavailable in a given environment.
+
+Reasoning:
+- Geospatial filtering at the DB layer is more scalable than fetching candidates then filtering in application code.
+- Expression index on geography point makes nearby lookup and distance calculations faster for map/list discovery.
+- Preserving scalar lat/lng fields avoids Prisma portability issues with direct geography column modeling.
+
+Follow-up:
+- Validate query plans and index usage with `EXPLAIN ANALYZE` as dataset grows.
+- Tune additional compound filters for high-volume sport/status/time windows.
+- Remove fallback path once all environments are guaranteed PostGIS-enabled.
+
 ## 2026-04-26: Expo push notifications as delivery layer over notification records
 
 Decision:

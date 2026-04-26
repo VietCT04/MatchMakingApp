@@ -16,7 +16,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - NestJS REST API with modules for users, sports, matches, ratings, venues, JWT auth, and health
 - Prisma schema for key relational entities
 - Elo helper utilities with unit tests
-- Nearby open-match discovery using venue coordinates and Haversine distance filtering
+- Nearby open-match discovery using venue coordinates and PostGIS geospatial filtering
 - Rule-based ranked discovery (`fitScore`) for personalized match ordering
 - Map discovery UI for nearby match browsing (marker-based view)
 - Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
@@ -57,6 +57,14 @@ cp .env.example .env
 
 ## Running PostgreSQL
 ```bash
+docker compose up -d
+```
+
+PostGIS note:
+- Local DB now runs on `postgis/postgis`.
+- If you previously used a plain Postgres container/volume, recreate local DB storage so PostGIS extension setup is clean:
+```bash
+docker compose down -v
 docker compose up -d
 ```
 
@@ -168,6 +176,7 @@ pnpm typecheck
 ## Implemented MVP Backend Flow
 - `GET /matches` supports filters: `sportId`, `format`, `status`, `minRating`, `maxRating`, `startsAfter`, `startsBefore`, `venueId`, `latitude`, `longitude`, `radiusKm`, `ranked`.
 - `GET /matches?ranked=true` adds `fitScore` + `fitBreakdown` and sorts by best fit for the authenticated user.
+- Nearby filtering in `GET /matches` is now handled in PostGIS (`ST_DWithin`) and distance is returned from SQL (`distanceKm`) while keeping the same API contract.
 - Ranked fit is rule-based (distance, rating fit, participant reliability, time, slot availability), not AI matchmaking.
 - `POST /matches/:id/join` joins a user, prevents duplicates/full/completed/cancelled matches, and marks a full match as `FULL`.
 - `POST /matches/:id/leave` marks a participant as `LEFT`, tracks cancellation stats, and counts late cancellation if the leave happens within 2 hours of match start.
@@ -234,7 +243,7 @@ pnpm typecheck
 - Quiet hours / do-not-disturb windows.
 - Push receipt analytics and delivery diagnostics UI.
 - Payments.
-- PostGIS/indexed geospatial querying for large-scale nearby search.
+- Additional PostGIS tuning for large-scale nearby search (query plans, selective indexes, and operational monitoring).
 - Admin moderation dashboard and dispute resolution tooling.
 - WebSocket/realtime chat delivery.
 - WebSocket/realtime notification delivery.

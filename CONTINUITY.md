@@ -46,7 +46,7 @@ sports-matchmaking/
 - `GET /health` endpoint.
 - CRUD skeletons for users, sports, venues, matches.
 - Match discovery filters on `GET /matches`.
-- Match discovery supports optional nearby filtering via `latitude` + `longitude` + `radiusKm`, computed with Haversine in service logic.
+- Match discovery supports optional nearby filtering via `latitude` + `longitude` + `radiusKm`, now backed by PostGIS (`ST_DWithin`/`ST_Distance`) with a spatial index.
 - Match discovery supports optional ranked mode (`ranked=true`) with rule-based `fitScore` + `fitBreakdown` ordering, including participant reliability contribution.
 - Match participant endpoints:
   - `POST /matches/:id/participants` (legacy alias)
@@ -112,7 +112,7 @@ sports-matchmaking/
 - Chat is implemented as REST polling MVP (no websocket realtime yet).
 - In-app notifications are implemented as database-backed source of truth.
 - Expo push notifications are implemented as a non-blocking delivery channel.
-- PostGIS/indexed geospatial filtering for scale (current map/list nearby discovery still uses app-layer Haversine).
+- PostGIS is required for production nearby geospatial filtering performance.
 - Payment logic.
 - Admin/moderation dashboard and dispute-resolution workflow.
 
@@ -192,6 +192,8 @@ sports-matchmaking/
 - Error responses use Nest defaults (statusCode/message/error) for exceptions.
 - Detailed endpoint docs: [docs/API.md](./docs/API.md).
 - `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI), and now includes reliability in ranking.
+- Nearby `GET /matches` now executes PostGIS distance filtering/calculation in SQL and still returns `distanceKm` for map/list clients.
+- Venue latitude/longitude columns remain in Prisma for compatibility; spatial search uses PostGIS expression indexing.
 - Chat permissions:
   - read: match creator or any participant status
   - send: match creator (unless cancelled) or JOINED participant
@@ -229,7 +231,7 @@ sports-matchmaking/
 
 ## Next Recommended Tasks
 1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
-2. Move nearby filtering from app-layer Haversine to PostGIS/indexed geospatial queries.
+2. Tune PostGIS geospatial queries and indexes (e.g. explain plans, additional query tuning for high-volume datasets).
 3. Add websocket realtime chat/notification delivery using existing notification events.
 4. Add advanced notification controls (per-match mute, quiet hours) and push receipt analytics.
 5. Implement payments.

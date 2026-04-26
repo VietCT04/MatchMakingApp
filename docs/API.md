@@ -154,6 +154,7 @@ Nearby behavior:
 - If `latitude`, `longitude`, and `radiusKm` are all provided, matches are filtered to venues within radius.
 - `distanceKm` is included per match in nearby mode.
 - If location params are not provided, existing non-location discovery behavior stays unchanged.
+- Nearby filtering and distance calculation are executed in PostGIS (`ST_DWithin` and `ST_Distance`) with parameterized SQL in the service layer.
 
 Ranked behavior:
 - If `ranked=true`, response includes `fitScore` and `fitBreakdown` per match and results are sorted by `fitScore` descending.

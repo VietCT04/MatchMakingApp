@@ -33,6 +33,7 @@ apps/mobile/app/
     notifications.tsx
     ratings.tsx
     profile.tsx
+  map.tsx
   notification-settings.tsx
   match/[id].tsx
   match-chat/[id].tsx
@@ -54,6 +55,7 @@ apps/mobile/app/
 - Keep request handling in controllers.
 - Keep business logic and orchestration in services.
 - Access persistence only through Prisma service.
+- Nearby match filtering uses parameterized raw SQL with PostGIS functions in the match query service.
 - Match chat is implemented as REST endpoints + permission checks in `ChatService` (polling MVP, no websocket layer yet).
 - In-app notifications are implemented as database-backed events in `NotificationsService` with per-user read/unread state.
 - Expo push notifications are a delivery channel driven by `NotificationsService` + `PushService`.
@@ -74,6 +76,7 @@ apps/mobile/app/
 ## Database Responsibility
 - Store durable records for users, sports, ratings, venues, matches, participants, results, rating history, reliability stats, disputes, reports, chat messages, notifications, push devices, and notification preferences.
 - Enforce relational consistency via foreign keys and unique constraints.
+- Power nearby geospatial discovery with PostGIS extension + spatial expression index on venue coordinates.
 
 ## Request Flow Example
 1. Mobile screen triggers API call.

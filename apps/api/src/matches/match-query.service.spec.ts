@@ -72,10 +72,12 @@ describe('MatchQueryService nearby filtering', () => {
 
   it('includes matches within radius and adds distanceKm', async () => {
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([
+        { matchId: 'near', distanceKm: 0.16 },
+      ]),
       match: {
         findMany: jest.fn().mockResolvedValue([
           createMatch('near', 1.3001, 103.8002, '2026-05-01T10:00:00.000Z'),
-          createMatch('far', 1.4300, 103.9000, '2026-05-01T10:30:00.000Z'),
         ]),
       },
     };
@@ -88,6 +90,7 @@ describe('MatchQueryService nearby filtering', () => {
     });
 
     expect(prisma.match.findMany).toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalled();
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('near');
     expect((result[0] as any).distanceKm).toBeDefined();
@@ -96,6 +99,7 @@ describe('MatchQueryService nearby filtering', () => {
 
   it('excludes matches outside radius', async () => {
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       match: {
         findMany: jest.fn().mockResolvedValue([
           createMatch('far-1', 1.4500, 103.9500, '2026-05-01T10:00:00.000Z'),
@@ -146,6 +150,11 @@ describe('MatchQueryService nearby filtering', () => {
 
   it('sorts ranked matches by fitScore descending', async () => {
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([
+        { matchId: 'medium', distanceKm: 0.07 },
+        { matchId: 'best', distanceKm: 0.02 },
+        { matchId: 'low', distanceKm: 0.62 },
+      ]),
       match: {
         findMany: jest.fn().mockResolvedValue([
           createMatch('medium', 1.3005, 103.8004, '2026-05-01T12:00:00.000Z', {
@@ -225,5 +234,28 @@ describe('MatchQueryService nearby filtering', () => {
     expect(result).toHaveLength(2);
     expect(result.every((match) => (match as any).fitScore !== undefined)).toBe(true);
     expect(result.every((match) => (match as any).distanceKm === undefined)).toBe(true);
+  });
+
+  it('falls back to app-layer distance when PostGIS functions are unavailable', async () => {
+    const prisma = {
+      $queryRaw: jest.fn().mockRejectedValue(new Error('function st_dwithin(geography, geography, double precision) does not exist')),
+      match: {
+        findMany: jest.fn().mockResolvedValue([
+          createMatch('near-fallback', 1.3001, 103.8002, '2026-05-01T10:00:00.000Z'),
+          createMatch('far-fallback', 1.4700, 103.9900, '2026-05-01T11:00:00.000Z'),
+        ]),
+      },
+    };
+    const service = new MatchQueryService(prisma as any, rankingService);
+
+    const result = await service.findAll({
+      latitude: 1.3002,
+      longitude: 103.8001,
+      radiusKm: 3,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('near-fallback');
+    expect((result[0] as any).distanceKm).toBeDefined();
   });
 });
