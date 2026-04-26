@@ -1,6 +1,6 @@
 import { MatchStatus, SportFormat } from '@sports-matchmaking/shared';
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsLatitude, IsLongitude, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
 export class MatchQueryDto {
   @IsOptional()
@@ -38,4 +38,20 @@ export class MatchQueryDto {
   @IsOptional()
   @IsUUID()
   venueId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  longitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0.1)
+  @Max(100)
+  radiusKm?: number;
 }

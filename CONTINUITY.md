@@ -46,6 +46,7 @@ sports-matchmaking/
 - `GET /health` endpoint.
 - CRUD skeletons for users, sports, venues, matches.
 - Match discovery filters on `GET /matches`.
+- Match discovery supports optional nearby filtering via `latitude` + `longitude` + `radiusKm`, computed with Haversine in service logic.
 - Match participant endpoints:
   - `POST /matches/:id/participants` (legacy alias)
   - `POST /matches/:id/join`
@@ -101,7 +102,10 @@ sports-matchmaking/
 - API base URL is centralized in `src/config/api.ts`.
 - Access tokens are stored with Expo SecureStore.
 - Normal mobile flow uses authenticated `/me` data instead of the seeded demo user.
-- Discovery, create match, match detail, result submission/verification, ratings, and profile screens now call backend APIs directly.
+- Discovery, create match, match detail, result submission/verification, ratings, and profile screens now call backend APIs directly with loading/error/empty states and retry actions.
+- Full MVP mobile flow is stable: `register/login -> discover -> create -> join -> submit result -> verify by different participant -> rating update -> logout`.
+- Temporary demo-user/dummy match path has been removed from the normal app flow.
+- Discover screen now supports current-location filtering with a radius selector (3/5/10/20 km), and gracefully falls back to showing all open matches if permission is denied.
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
 
@@ -146,11 +150,12 @@ sports-matchmaking/
 - Auth is no longer placeholder, but still needs production hardening such as refresh/session revocation and email verification.
 
 ## Next Recommended Tasks
-1. Run and verify the committed migration against a clean local database.
-2. Improve mobile state/data handling (query caching, loading/error states).
-3. Add geolocation + nearby venue discovery.
-4. Add dispute and moderation rules for verified results.
-5. Add refresh tokens or session revocation before production.
+1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
+2. Move nearby filtering from app-layer Haversine to PostGIS/indexed geospatial queries.
+3. Implement chat and push notifications.
+4. Implement payments.
+5. Add map UI for visual nearby discovery.
+6. Add advanced rating/dispute and moderation rules.
 
 ## Local Development Commands
 From repo root:

@@ -41,6 +41,9 @@ export type MatchFilters = {
   startsAfter?: string;
   startsBefore?: string;
   venueId?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
 };
 
 export type SubmitMatchResultInput = {

@@ -92,6 +92,7 @@ export interface MatchWithDetailsDto extends MatchDto {
   result?: MatchResultDto | null;
   sport?: SportDto;
   venue?: VenueDto | null;
+  distanceKm?: number;
 }
 
 export interface RatingDto {

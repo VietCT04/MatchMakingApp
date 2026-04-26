@@ -1,5 +1,23 @@
 # Decision Log
 
+## 2026-04-26: Nearby match discovery via `GET /matches` query extension
+
+Decision:
+- Extend `GET /matches` with optional `latitude`, `longitude`, and `radiusKm` query params instead of introducing a new endpoint.
+- Keep existing discovery behavior when location params are absent.
+- Compute distance using a shared Haversine helper in application code.
+- Return `distanceKm` on match responses only when nearby mode is used.
+- Add Discover screen location flow with Expo Location and radius options (3/5/10/20 km).
+
+Reasoning:
+- Preserves the existing client contract and avoids endpoint split while MVP discovery remains simple.
+- Venue coordinates already exist, so Haversine is enough for current scale.
+- Service-layer filtering keeps controllers thin and prepares a clean migration path to database geospatial queries later.
+
+Follow-up:
+- Move nearby filtering/sorting to PostGIS + geospatial indexes.
+- Add map-based UX once product scope expands beyond list-first MVP.
+
 ## 2026-04-25: Implement DB-backed MVP match flow
 
 Decision:

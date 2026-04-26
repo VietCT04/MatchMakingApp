@@ -1,104 +1,93 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { MatchStatus, MatchParticipantStatus, Team, type MatchResultDto, type MatchWithDetailsDto } from '@sports-matchmaking/shared';
+import { MatchStatus, MatchParticipantStatus, Team } from '@sports-matchmaking/shared';
 import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
+import { useMatchDetail } from '../../src/hooks/useMatchDetail';
 
 export default function MatchDetailScreen() {
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [match, setMatch] = useState<MatchWithDetailsDto | null>(null);
-  const [pendingResult, setPendingResult] = useState<MatchResultDto | null>(null);
+  const matchId = typeof id === 'string' ? id : undefined;
+  const { data: match, loading, error: loadError, refresh } = useMatchDetail(matchId);
   const [teamAScore, setTeamAScore] = useState('21');
   const [teamBScore, setTeamBScore] = useState('17');
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [message, setMessage] = useState('');
 
-  const matchId = String(id ?? '');
-
-  async function loadMatch() {
-    if (!matchId) return;
-    setLoading(true);
-    setError('');
-    try {
-      const response = await apiClient.getMatchById(matchId);
-      setMatch(response);
-      setPendingResult(response.result ?? null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load match.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadMatch();
-  }, [matchId]);
+  const error = actionError || loadError;
 
   const joinedParticipants = useMemo(
     () => match?.participants?.filter((item) => item.status === MatchParticipantStatus.JOINED) ?? [],
     [match],
   );
   const currentParticipant = joinedParticipants.find((item) => item.userId === user?.id);
-  const canJoin = match?.status === MatchStatus.OPEN && !currentParticipant;
+  const pendingResult = match?.result ?? null;
+  const canJoin =
+    Boolean(user) &&
+    match?.status === MatchStatus.OPEN &&
+    !currentParticipant &&
+    joinedParticipants.length < (match?.maxPlayers ?? 0);
   const canLeave = Boolean(currentParticipant) && match?.status !== MatchStatus.COMPLETED;
+  const canSubmitResult = Boolean(currentParticipant);
+  const canVerify =
+    Boolean(currentParticipant) &&
+    Boolean(pendingResult) &&
+    !pendingResult?.verified &&
+    pendingResult?.submittedByUserId !== user?.id;
 
   async function runAction(action: () => Promise<unknown>, success: string) {
     setBusy(true);
-    setError('');
+    setActionError('');
     setMessage('');
     try {
       await action();
       setMessage(success);
-      await loadMatch();
+      await refresh();
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'Action failed.');
+      setActionError(actionError instanceof Error ? actionError.message : 'Action failed.');
     } finally {
       setBusy(false);
     }
   }
 
   async function submitResult() {
-    if (!user) {
-      setError('Login required to submit results.');
-      return;
-    }
     const parsedA = Number(teamAScore);
     const parsedB = Number(teamBScore);
     if (!Number.isInteger(parsedA) || !Number.isInteger(parsedB) || parsedA < 0 || parsedB < 0) {
-      setError('Scores must be non-negative whole numbers.');
+      setActionError('Scores must be non-negative whole numbers.');
       return;
     }
 
     await runAction(
-      async () => {
-        const result = await apiClient.submitMatchResult(matchId, {
-          teamAScore: parsedA,
-          teamBScore: parsedB,
-        });
-        setPendingResult(result);
-      },
+      () => apiClient.submitMatchResult(matchId ?? '', { teamAScore: parsedA, teamBScore: parsedB }),
       'Result submitted for verification.',
     );
   }
 
   async function verifyResult() {
-    const resultId = pendingResult?.id ?? match?.result?.id;
+    const resultId = pendingResult?.id;
     if (!resultId) {
-      setError('Submit a result before verifying.');
+      setActionError('Submit a result before verifying.');
       return;
     }
-    await runAction(() => apiClient.verifyMatchResult(matchId, resultId), 'Result verified and ratings updated.');
+    await runAction(() => apiClient.verifyMatchResult(matchId ?? '', resultId), 'Result verified and ratings updated.');
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Match Detail</Text>
       {loading ? <Text style={styles.muted}>Loading match...</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.messageBox}>
+          <Text style={styles.error}>{error}</Text>
+          <Pressable style={styles.secondaryButton} onPress={refresh}>
+            <Text style={styles.secondaryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {message ? <Text style={styles.success}>{message}</Text> : null}
 
       {match ? (
@@ -117,7 +106,7 @@ export default function MatchDetailScreen() {
             {joinedParticipants.length === 0 ? <Text style={styles.muted}>No joined participants yet.</Text> : null}
             {joinedParticipants.map((participant) => (
               <Text key={participant.id} style={styles.line}>
-                {participant.userId === user?.id ? 'You' : participant.userId} | Team {participant.team}
+                {participant.userId === user?.id ? 'You' : `User ${participant.userId.slice(0, 8)}`} | Team {participant.team}
               </Text>
             ))}
           </View>
@@ -125,10 +114,10 @@ export default function MatchDetailScreen() {
           <View style={styles.actionRow}>
             {canJoin ? (
               <>
-                <Pressable style={styles.button} disabled={busy || !user} onPress={() => runAction(() => apiClient.joinMatch(match.id, undefined, Team.A), 'Joined team A.')}>
+                <Pressable style={styles.button} disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.A), 'Joined team A.')}>
                   <Text style={styles.buttonText}>Join A</Text>
                 </Pressable>
-                <Pressable style={styles.button} disabled={busy || !user} onPress={() => runAction(() => apiClient.joinMatch(match.id, undefined, Team.B), 'Joined team B.')}>
+                <Pressable style={styles.button} disabled={busy} onPress={() => runAction(() => apiClient.joinMatch(match.id, Team.B), 'Joined team B.')}>
                   <Text style={styles.buttonText}>Join B</Text>
                 </Pressable>
               </>
@@ -149,18 +138,29 @@ export default function MatchDetailScreen() {
             ) : (
               <Text style={styles.muted}>No result submitted.</Text>
             )}
-            <View style={styles.scoreRow}>
-              <TextInput style={styles.scoreInput} value={teamAScore} onChangeText={setTeamAScore} keyboardType="number-pad" placeholder="Team A" />
-              <TextInput style={styles.scoreInput} value={teamBScore} onChangeText={setTeamBScore} keyboardType="number-pad" placeholder="Team B" />
-            </View>
-            <View style={styles.actionRow}>
-              <Pressable style={styles.button} disabled={busy || !currentParticipant} onPress={submitResult}>
-                <Text style={styles.buttonText}>Submit Result</Text>
-              </Pressable>
-              <Pressable style={styles.secondaryButton} disabled={busy || !pendingResult || pendingResult.verified} onPress={verifyResult}>
-                <Text style={styles.secondaryButtonText}>Verify</Text>
-              </Pressable>
-            </View>
+            {canSubmitResult ? (
+              <>
+                <View style={styles.scoreRow}>
+                  <TextInput style={styles.scoreInput} value={teamAScore} onChangeText={setTeamAScore} keyboardType="number-pad" placeholder="Team A" />
+                  <TextInput style={styles.scoreInput} value={teamBScore} onChangeText={setTeamBScore} keyboardType="number-pad" placeholder="Team B" />
+                </View>
+                <View style={styles.actionRow}>
+                  <Pressable style={styles.button} disabled={busy} onPress={submitResult}>
+                    <Text style={styles.buttonText}>Submit Result</Text>
+                  </Pressable>
+                  {canVerify ? (
+                    <Pressable style={styles.secondaryButton} disabled={busy} onPress={verifyResult}>
+                      <Text style={styles.secondaryButtonText}>Verify</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {!canVerify && pendingResult && pendingResult.submittedByUserId === user?.id ? (
+                  <Text style={styles.muted}>Result submitter cannot verify their own result.</Text>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.muted}>Only joined participants can submit or verify results.</Text>
+            )}
           </View>
         </>
       ) : null}
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
   section: { gap: 6 },
   heading: { fontSize: 18, fontWeight: '700' },
   line: { color: '#44516a' },
+  messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },
   success: { color: '#067647' },

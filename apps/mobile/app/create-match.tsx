@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SportFormat, type SportDto, type VenueDto } from '@sports-matchmaking/shared';
+import { SportFormat } from '@sports-matchmaking/shared';
 import { useAuth } from '../src/auth/AuthContext';
 import { apiClient } from '../src/lib/api';
+import { useSports } from '../src/hooks/useSports';
+import { useVenues } from '../src/hooks/useVenues';
 
 export default function CreateMatchScreen() {
-  const { user, loading: authLoading } = useAuth();
-  const [sports, setSports] = useState<SportDto[]>([]);
-  const [venues, setVenues] = useState<VenueDto[]>([]);
-  const [sportId, setSportId] = useState('');
-  const [venueId, setVenueId] = useState('');
+  const { user, authLoading } = useAuth();
+  const { data: sports, loading: sportsLoading, error: sportsError, refresh: refreshSports } = useSports();
+  const { data: venues, loading: venuesLoading, error: venuesError, refresh: refreshVenues } = useVenues();
+  const [sportId, setSportId] = useState<string | undefined>();
+  const [venueId, setVenueId] = useState<string | undefined>();
   const [format, setFormat] = useState<SportFormat>(SportFormat.DOUBLES);
   const [title, setTitle] = useState('Saturday Doubles');
   const [description, setDescription] = useState('Friendly MVP test match');
@@ -18,60 +20,47 @@ export default function CreateMatchScreen() {
   const [maxPlayers, setMaxPlayers] = useState('4');
   const [minRating, setMinRating] = useState('1000');
   const [maxRating, setMaxRating] = useState('1500');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
-  useEffect(() => {
-    async function loadOptions() {
-      try {
-        const [sportsResponse, venuesResponse] = await Promise.all([apiClient.getSports(), apiClient.getVenues()]);
-        setSports(sportsResponse);
-        setVenues(venuesResponse);
-        setSportId(sportsResponse[0]?.id ?? '');
-        setVenueId(venuesResponse[0]?.id ?? '');
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Could not load form options.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadOptions();
-  }, []);
+  const loading = sportsLoading || venuesLoading;
+  const optionsError = sportsError || venuesError;
+  const error = submitError || optionsError;
 
   async function handleCreate() {
-    setError('');
+    setSubmitError('');
     if (!user) {
-      setError('Login required to create a match.');
+      setSubmitError('Login required to create a match.');
       return;
     }
+    const effectiveSportId = sportId ?? sports[0]?.id;
+    const effectiveVenueId = venueId ?? venues[0]?.id;
     const parsedMaxPlayers = Number(maxPlayers);
     const parsedMinRating = minRating === '' ? undefined : Number(minRating);
     const parsedMaxRating = maxRating === '' ? undefined : Number(maxRating);
 
-    if (!sportId || !venueId || !title.trim()) {
-      setError('Sport, venue, and title are required.');
+    if (!effectiveSportId || !effectiveVenueId || !title.trim()) {
+      setSubmitError('Sport, venue, and title are required.');
       return;
     }
     if (!Number.isInteger(parsedMaxPlayers) || parsedMaxPlayers <= 0) {
-      setError('Max players must be a positive whole number.');
+      setSubmitError('Max players must be a positive whole number.');
       return;
     }
     if (Number.isNaN(Date.parse(startsAt))) {
-      setError('Start time must be a valid ISO date string.');
+      setSubmitError('Start time must be a valid ISO date string.');
       return;
     }
     if (parsedMinRating !== undefined && parsedMaxRating !== undefined && parsedMinRating > parsedMaxRating) {
-      setError('Minimum rating must be less than or equal to maximum rating.');
+      setSubmitError('Minimum rating must be less than or equal to maximum rating.');
       return;
     }
 
     setSubmitting(true);
     try {
       const match = await apiClient.createMatch({
-        sportId,
-        venueId,
+        sportId: effectiveSportId,
+        venueId: effectiveVenueId,
         title: title.trim(),
         description: description.trim() || undefined,
         format,
@@ -80,13 +69,20 @@ export default function CreateMatchScreen() {
         minRating: parsedMinRating,
         maxRating: parsedMaxRating,
       });
-      router.push({ pathname: '/match/[id]', params: { id: match.id } });
+      router.replace({ pathname: '/match/[id]', params: { id: match.id } });
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Could not create match.');
+      setSubmitError(createError instanceof Error ? createError.message : 'Could not create match.');
     } finally {
       setSubmitting(false);
     }
   }
+
+  async function retryLoad() {
+    await Promise.all([refreshSports(), refreshVenues()]);
+  }
+
+  const selectedSportId = useMemo(() => sportId ?? sports[0]?.id, [sportId, sports]);
+  const selectedVenueId = useMemo(() => venueId ?? venues[0]?.id, [venueId, venues]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -94,12 +90,17 @@ export default function CreateMatchScreen() {
       {!authLoading && !user ? <Text style={styles.error}>Login required to create a match.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading sports and venues...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {!loading && optionsError ? (
+        <Pressable style={styles.secondaryButton} onPress={retryLoad}>
+          <Text style={styles.secondaryButtonText}>Retry loading options</Text>
+        </Pressable>
+      ) : null}
 
       <Text style={styles.label}>Sport</Text>
       <View style={styles.optionRow}>
         {sports.map((sport) => (
-          <Pressable key={sport.id} style={[styles.option, sportId === sport.id && styles.optionActive]} onPress={() => setSportId(sport.id)}>
-            <Text style={[styles.optionText, sportId === sport.id && styles.optionTextActive]}>{sport.name}</Text>
+          <Pressable key={sport.id} style={[styles.option, selectedSportId === sport.id && styles.optionActive]} onPress={() => setSportId(sport.id)}>
+            <Text style={[styles.optionText, selectedSportId === sport.id && styles.optionTextActive]}>{sport.name}</Text>
           </Pressable>
         ))}
       </View>
@@ -107,8 +108,8 @@ export default function CreateMatchScreen() {
       <Text style={styles.label}>Venue</Text>
       <View style={styles.optionColumn}>
         {venues.map((venue) => (
-          <Pressable key={venue.id} style={[styles.option, venueId === venue.id && styles.optionActive]} onPress={() => setVenueId(venue.id)}>
-            <Text style={[styles.optionText, venueId === venue.id && styles.optionTextActive]}>{venue.name}</Text>
+          <Pressable key={venue.id} style={[styles.option, selectedVenueId === venue.id && styles.optionActive]} onPress={() => setVenueId(venue.id)}>
+            <Text style={[styles.optionText, selectedVenueId === venue.id && styles.optionTextActive]}>{venue.name}</Text>
           </Pressable>
         ))}
       </View>
@@ -129,7 +130,11 @@ export default function CreateMatchScreen() {
       <TextInput style={styles.input} value={minRating} onChangeText={setMinRating} placeholder="Min rating" keyboardType="number-pad" />
       <TextInput style={styles.input} value={maxRating} onChangeText={setMaxRating} placeholder="Max rating" keyboardType="number-pad" />
 
-      <Pressable style={[styles.button, (submitting || !user) && styles.buttonDisabled]} onPress={handleCreate} disabled={submitting || !user}>
+      <Pressable
+        style={[styles.button, (submitting || !user || loading) && styles.buttonDisabled]}
+        onPress={handleCreate}
+        disabled={submitting || !user || loading}
+      >
         <Text style={styles.buttonText}>{submitting ? 'Creating...' : 'Create Match'}</Text>
       </Pressable>
     </ScrollView>
@@ -151,6 +156,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#1f4ad3', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '700' },
+  secondaryButton: { borderColor: '#1f4ad3', borderWidth: 1, borderRadius: 8, padding: 12, alignSelf: 'flex-start' },
+  secondaryButtonText: { color: '#1f4ad3', fontWeight: '700' },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },
 });

@@ -165,6 +165,8 @@ pnpm prisma:seed
 
 ## Future Database Improvements
 - PostGIS support for geo queries and distance sorting.
+  - Current nearby match discovery uses app-layer Haversine filtering after Prisma candidate fetch.
+  - This should migrate to indexed PostGIS queries for scale.
 - Additional indexes for high-traffic filters (`sportId`, `startsAt`, `status`, rating ranges).
 - More explicit uniqueness and data integrity constraints for match workflows.
 - Add audit fields (`createdBy`, `updatedBy`) where needed.

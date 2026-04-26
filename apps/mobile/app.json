@@ -9,6 +9,14 @@
     "ios": {
       "supportsTablet": true
     },
-    "plugins": ["expo-router"]
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Sports Matchmaking to use your location for nearby match discovery."
+        }
+      ]
+    ]
   }
 }

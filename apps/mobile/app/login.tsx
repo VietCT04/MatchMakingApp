@@ -1,21 +1,32 @@
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../src/auth/AuthContext';
 
 export default function LoginScreen() {
-  const { login } = useAuth();
-  const [email, setEmail] = useState('alex@example.com');
-  const [password, setPassword] = useState('password123');
+  const { authLoading, login, user } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/discover');
+    }
+  }, [authLoading, user]);
+
   async function handleLogin() {
+    if (!email.trim() || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     try {
-      await login(email, password);
-      router.replace('/');
+      await login(email.trim(), password);
+      router.replace('/discover');
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Login failed.');
     } finally {

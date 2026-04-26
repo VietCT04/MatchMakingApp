@@ -1,47 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { RatingDto, RatingHistoryDto } from '@sports-matchmaking/shared';
 import { useAuth } from '../src/auth/AuthContext';
-import { apiClient } from '../src/lib/api';
+import { useUserRatings } from '../src/hooks/useUserRatings';
+import { Pressable } from 'react-native';
 
 export default function RatingsScreen() {
-  const { user, loading: authLoading } = useAuth();
-  const [ratings, setRatings] = useState<RatingDto[]>([]);
-  const [history, setHistory] = useState<RatingHistoryDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { user, authLoading } = useAuth();
+  const { data, loading, error, refresh } = useUserRatings(Boolean(user));
+  const { ratings, history } = data;
 
-  useEffect(() => {
-    async function loadRatings() {
-      if (!user) {
-        setLoading(false);
-        return;
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        void refresh();
       }
-      setLoading(true);
-      setError('');
-      try {
-        const [ratingsResponse, historyResponse] = await Promise.all([
-          apiClient.getUserRatings(),
-          apiClient.getUserRatingHistory(),
-        ]);
-        setRatings(ratingsResponse);
-        setHistory(historyResponse);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Could not load ratings.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadRatings();
-  }, [user]);
+    }, [refresh, user]),
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Ratings</Text>
       {!authLoading && !user ? <Text style={styles.error}>Login required to view ratings.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading ratings...</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.messageBox}>
+          <Text style={styles.error}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={refresh}>
+            <Text style={styles.retryText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <Text style={styles.heading}>Current</Text>
       {!loading && !error && ratings.length === 0 ? <Text style={styles.muted}>No ratings yet.</Text> : null}
@@ -79,6 +68,16 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderColor: '#d4dbe8', borderRadius: 8, padding: 12, gap: 4 },
   cardTitle: { fontWeight: '700' },
   line: { color: '#44516a' },
+  messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },
+  retryButton: {
+    alignSelf: 'flex-start',
+    borderColor: '#1f4ad3',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  retryText: { color: '#1f4ad3', fontWeight: '700' },
 });

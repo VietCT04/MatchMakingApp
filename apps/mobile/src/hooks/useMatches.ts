@@ -34,6 +34,9 @@ export function useMatches(filters: MatchFilters = {}): UseMatchesResult {
     filters.startsBefore,
     filters.status,
     filters.venueId,
+    filters.latitude,
+    filters.longitude,
+    filters.radiusKm,
   ]);
 
   useEffect(() => {

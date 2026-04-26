@@ -143,8 +143,22 @@ Supported query filters:
 - `startsAfter`
 - `startsBefore`
 - `venueId`
+- `latitude`
+- `longitude`
+- `radiusKm`
 
 Default behavior: returns `OPEN` matches unless `status` is provided.
+
+Nearby behavior:
+- If `latitude`, `longitude`, and `radiusKm` are all provided, matches are filtered to venues within radius.
+- `distanceKm` is included per match in nearby mode.
+- If location params are not provided, existing non-location discovery behavior stays unchanged.
+
+Nearby validation:
+- `latitude`: `-90` to `90`
+- `longitude`: `-180` to `180`
+- `radiusKm`: `> 0` and `<= 100`
+- If any one of `latitude|longitude|radiusKm` is provided, all three are required.
 
 ### `GET /matches/:id`
 Returns single match with included `participants`, `sport`, and `venue`.
@@ -302,3 +316,6 @@ Validation errors (from `ValidationPipe`) typically return:
 - iOS simulator can use `http://localhost:3000`.
 - Physical devices need `EXPO_PUBLIC_API_URL` set to the development computer LAN address.
 - Current mobile auth context uses JWT tokens stored through Expo SecureStore.
+- `AuthContext` restores token on startup, refreshes current user via `/me` (fallback `/auth/me`), and clears token/session on `401`.
+- Normal authenticated flow no longer relies on seeded demo user or mock fallback data in screens.
+- Discover supports optional nearby filtering using Expo Location and sends `latitude`, `longitude`, `radiusKm` to `GET /matches`.

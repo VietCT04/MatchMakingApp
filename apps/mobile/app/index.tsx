@@ -6,28 +6,27 @@ const links = [
   { href: '/profile', label: 'Player Profile' },
   { href: '/discover', label: 'Match Discovery' },
   { href: '/create-match', label: 'Create Match' },
-  { href: '/match/mock-match-1', label: 'Match Detail' },
   { href: '/ratings', label: 'Ratings' },
 ] as const;
 
 export default function HomeScreen() {
-  const { user, loading, logout } = useAuth();
+  const { user, authLoading, logout } = useAuth();
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sports Matchmaking MVP</Text>
-      <Text style={styles.subtitle}>{loading ? 'Loading session...' : user ? `Signed in as ${user.displayName}` : 'Sign in to create, join, and score matches.'}</Text>
-      {!loading && !user ? (
+      <Text style={styles.subtitle}>{authLoading ? 'Loading session...' : user ? `Signed in as ${user.displayName}` : 'Sign in to create, join, and score matches.'}</Text>
+      {!authLoading && !user ? (
         <>
           <Link href="/login" style={styles.link}>Login</Link>
           <Link href="/register" style={styles.link}>Register</Link>
         </>
       ) : null}
-      {links.map((item) => (
+      {user ? links.map((item) => (
         <Link key={item.href} href={item.href} style={styles.link}>
           {item.label}
         </Link>
-      ))}
+      )) : null}
       {user ? (
         <Pressable style={styles.logout} onPress={logout}>
           <Text style={styles.logoutText}>Logout</Text>

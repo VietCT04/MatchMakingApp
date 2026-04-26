@@ -1,31 +1,30 @@
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { RatingDto, UserDto } from '@sports-matchmaking/shared';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { UserDto } from '@sports-matchmaking/shared';
+import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthContext';
-import { apiClient } from '../src/lib/api';
+import { useUserRatings } from '../src/hooks/useUserRatings';
 
 export default function ProfileScreen() {
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, authLoading, logout, refreshMe } = useAuth();
   const [user, setUser] = useState<UserDto | null>(null);
-  const [ratings, setRatings] = useState<RatingDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { data: ratingsData, loading: ratingsLoading, error: ratingsError, refresh: refreshRatings } = useUserRatings(Boolean(authUser));
+  const ratings = ratingsData.ratings;
 
   useEffect(() => {
     async function loadProfile() {
       if (!authUser) {
+        setUser(null);
         setLoading(false);
         return;
       }
       setLoading(true);
       setError('');
       try {
-        const [userResponse, ratingsResponse] = await Promise.all([
-          apiClient.getMe(),
-          apiClient.getUserRatings(),
-        ]);
-        setUser(userResponse);
-        setRatings(ratingsResponse);
+        const refreshed = await refreshMe();
+        setUser(refreshed ?? authUser);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Could not load profile.');
       } finally {
@@ -34,7 +33,15 @@ export default function ProfileScreen() {
     }
 
     loadProfile();
-  }, [authUser]);
+  }, [authUser, refreshMe]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (authUser) {
+        void refreshRatings();
+      }
+    }, [authUser, refreshRatings]),
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -54,13 +61,21 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Text style={styles.heading}>Ratings Summary</Text>
-        {ratings.length === 0 ? <Text style={styles.muted}>No ratings found.</Text> : null}
+        {ratingsLoading ? <Text style={styles.muted}>Loading ratings summary...</Text> : null}
+        {!ratingsLoading && ratingsError ? <Text style={styles.error}>{ratingsError}</Text> : null}
+        {!ratingsLoading && !ratingsError && ratings.length === 0 ? <Text style={styles.muted}>No ratings found.</Text> : null}
         {ratings.slice(0, 6).map((rating) => (
           <Text key={rating.id} style={styles.line}>
             {rating.sportId} | {rating.format}: {rating.rating} ({rating.gamesPlayed} games)
           </Text>
         ))}
       </View>
+
+      {authUser ? (
+        <Pressable style={styles.logoutButton} onPress={logout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
+      ) : null}
 
     </ScrollView>
   );
@@ -75,5 +90,6 @@ const styles = StyleSheet.create({
   line: { color: '#44516a' },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },
-  note: { color: '#6f7b91', marginTop: 8 },
+  logoutButton: { backgroundColor: '#20304a', borderRadius: 8, padding: 14, alignItems: 'center' },
+  logoutText: { color: '#fff', fontWeight: '700' },
 });

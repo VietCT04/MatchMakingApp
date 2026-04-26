@@ -1,22 +1,33 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../src/auth/AuthContext';
 
 export default function RegisterScreen() {
-  const { register } = useAuth();
+  const { authLoading, register, user } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/discover');
+    }
+  }, [authLoading, user]);
+
   async function handleRegister() {
+    if (!displayName.trim() || !email.trim() || !password) {
+      setError('Display name, email, and password are required.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     try {
-      await register(email, password, displayName);
-      router.replace('/');
+      await register(email.trim(), password, displayName.trim());
+      router.replace('/discover');
     } catch (registerError) {
       setError(registerError instanceof Error ? registerError.message : 'Registration failed.');
     } finally {

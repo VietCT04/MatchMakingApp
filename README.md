@@ -15,6 +15,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - NestJS REST API with modules for users, sports, matches, ratings, venues, JWT auth, and health
 - Prisma schema for key relational entities
 - Elo helper utilities with unit tests
+- Nearby open-match discovery using venue coordinates and Haversine distance filtering
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -144,7 +145,7 @@ pnpm typecheck
 - Prisma connection errors
   - Verify PostgreSQL container is running and `DATABASE_URL` is correct.
 - Empty mobile data
-  - App falls back to mock data when API is unavailable; confirm network and API health endpoint.
+  - App does not fall back to mock data in normal flow; confirm network and API health endpoint.
 
 ## Roadmap (High Level)
 - Phase 1: scaffold + CRUD skeleton (current)
@@ -166,7 +167,14 @@ pnpm typecheck
 - `GET /users/:userId/rating-history` returns rating change history.
 
 ## Implemented MVP Mobile Flow
+- Stable authenticated flow now covers:
+  - register/login -> discover open matches -> create match -> join/leave -> submit result -> verify result (different joined participant) -> rating update visible in ratings/profile -> logout
 - Match Discovery fetches open matches from the backend and supports simple sport filtering.
+- Match Discovery supports optional nearby mode:
+  - "Use my location" permission flow
+  - radius filter options (`3`, `5`, `10`, `20` km)
+  - distance labels on cards (for example `2.4 km away`)
+  - denied permission fallback message while still showing all open matches
 - Create Match fetches sports/venues and posts to `POST /matches`.
 - Match Detail supports join, leave, submit result, verify result, and refreshes data after actions.
 - Login/Register use `/auth/login` and `/auth/register`.
@@ -174,6 +182,15 @@ pnpm typecheck
 - Create, join, leave, submit result, and verify result derive user identity from JWT.
 - Ratings uses `/me/ratings` and `/me/rating-history`.
 - Profile uses `/me`.
+- Temporary demo-user normal flow has been removed from navigation and match detail behavior.
+
+## Remaining TODOs
+- Better UI polish and richer UX states.
+- Full map UI and richer map-based nearby discovery.
+- Chat and push notifications.
+- Payments.
+- PostGIS/indexed geospatial querying for large-scale nearby search.
+- Advanced rating/dispute rules.
 
 ## Auth Quick Test
 ```bash
