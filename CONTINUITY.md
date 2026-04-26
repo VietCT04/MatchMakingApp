@@ -59,6 +59,9 @@ sports-matchmaking/
   - `POST /matches/:id/results/:resultId/disputes`
 - Reports endpoint:
   - `POST /reports/users`
+- Chat endpoints:
+  - `GET /matches/:id/chat/messages`
+  - `POST /matches/:id/chat/messages`
 - Reliability endpoints:
   - `GET /me/reliability`
   - `GET /users/:userId/reliability`
@@ -90,7 +93,7 @@ sports-matchmaking/
 ## Incomplete Features
 - Production auth hardening beyond MVP JWT.
 - Better result UX and verified-result permissions.
-- Real-time chat implementation (only TODO comments in UI).
+- Chat is now implemented as REST polling MVP (no websocket realtime yet).
 - Push notification integration.
 - Map/location services and geospatial filtering.
 - Payment logic.
@@ -123,6 +126,12 @@ sports-matchmaking/
   - clear main action panel (join/leave/completed states)
   - explicit result workflow card (submit, verify, dispute states and rules)
   - trust/safety panel (report, no-show, dispute actions with permissions)
+- Match detail includes a gated `Open chat` action for creator/participants.
+- Match chat route (`/match-chat/[id]`) provides:
+  - load-on-open messages
+  - manual refresh
+  - focused interval polling
+  - send-and-refresh flow
 - Profile includes a reliability stats card (score, completions, cancellations, late cancellations, no-shows, disputes, reports).
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
@@ -152,6 +161,10 @@ sports-matchmaking/
 - Error responses use Nest defaults (statusCode/message/error) for exceptions.
 - Detailed endpoint docs: [docs/API.md](./docs/API.md).
 - `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI), and now includes reliability in ranking.
+- Chat permissions:
+  - read: match creator or any participant status
+  - send: match creator (unless cancelled) or JOINED participant
+  - send blocked for cancelled match, LEFT participant, and NO_SHOW participant
 - Current fit weights:
   - distance 30%
   - rating fit 30%
@@ -181,7 +194,7 @@ sports-matchmaking/
 ## Next Recommended Tasks
 1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
 2. Move nearby filtering from app-layer Haversine to PostGIS/indexed geospatial queries.
-3. Implement chat and push notifications.
+3. Add websocket realtime chat and push notifications.
 4. Implement payments.
 5. Add map UI for visual nearby discovery.
 6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.

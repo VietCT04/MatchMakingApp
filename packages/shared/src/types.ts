@@ -150,6 +150,22 @@ export interface UserReportDto {
   updatedAt: string;
 }
 
+export interface ChatMessageSenderDto {
+  id: string;
+  displayName: string;
+}
+
+export interface ChatMessageDto {
+  id: string;
+  matchId: string;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  sender: ChatMessageSenderDto;
+}
+
 export interface RatingDto {
   id: string;
   userId: string;

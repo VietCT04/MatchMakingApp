@@ -604,6 +604,11 @@ This section tracks what has been implemented from this review, and what is stil
   - `MatchActionPanel`
   - `TrustSafetyPanel`
 - [x] Result workflow UX now has clearer states (no result, pending verification, verified, disputed) and improved action visibility rules.
+- [x] Added match chat MVP route and integration:
+  - `app/match-chat/[id].tsx`
+  - match detail entry button for creator/participants
+  - REST polling refresh pattern (manual + interval while focused)
+  - aligned sender/current-user message bubbles with shared primitives
 - [x] Added reliability summary card on Profile screen.
 - [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 

@@ -301,6 +301,49 @@ Rules:
 - reason is required and minimum length is 5
 - creates dispute with `OPEN` status
 
+### `GET /matches/:id/chat/messages`
+Requires `Authorization: Bearer <token>`.
+
+Optional query:
+- `limit` (default 50, max 100)
+- `before` (ISO datetime, returns messages before this timestamp)
+
+Response:
+- returns match chat messages sorted oldest to newest
+- each message includes sender summary:
+```json
+{
+  "id": "message-uuid",
+  "matchId": "match-uuid",
+  "senderUserId": "user-uuid",
+  "body": "See you at 7pm?",
+  "createdAt": "2026-04-26T12:00:00.000Z",
+  "updatedAt": "2026-04-26T12:00:00.000Z",
+  "sender": {
+    "id": "user-uuid",
+    "displayName": "Player One"
+  }
+}
+```
+
+### `POST /matches/:id/chat/messages`
+Requires `Authorization: Bearer <token>`.
+
+Request:
+```json
+{
+  "body": "See you at 7pm?"
+}
+```
+
+Rules:
+- only match creator or match participants can access chat
+- LEFT participants can read but cannot send
+- NO_SHOW participants cannot send
+- creator can send unless match is cancelled
+- sending is blocked for cancelled matches
+- `body` is required, min length 1, max length 1000
+
 ## Reliability Endpoints
 ### `GET /me/reliability`
 Requires `Authorization: Bearer <token>`.

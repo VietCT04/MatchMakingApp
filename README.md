@@ -19,6 +19,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Nearby open-match discovery using venue coordinates and Haversine distance filtering
 - Rule-based ranked discovery (`fitScore`) for personalized match ordering
 - Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
+- Match-specific chat MVP (REST + polling)
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -173,6 +174,8 @@ pnpm typecheck
 - `POST /reports/users` creates a user report and updates reported-user reliability stats.
 - `GET /me/reliability` returns current authenticated-user reliability stats.
 - `GET /users/:userId/reliability` returns public reliability summary for a user.
+- `GET /matches/:id/chat/messages` returns match chat messages for match creator/participants.
+- `POST /matches/:id/chat/messages` sends a match chat message for eligible users.
 - `GET /users/:userId/ratings` returns a user's current sport ratings.
 - `GET /users/:userId/rating-history` returns rating change history.
 - Reliability score is separate from Elo:
@@ -196,6 +199,7 @@ pnpm typecheck
 - Match Detail has been redesigned with reusable sections (hero summary, status timeline, team rosters, action panel, result workflow card, and trust/safety panel).
 - Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
 - Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
+- Match chat screen supports REST polling MVP (open chat from match detail, read/send messages, manual refresh, and periodic refresh while focused).
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
 - Profile screen now has clean fallback text, a clearer ratings summary, and a reliability stats card.
 - Login/Register use `/auth/login` and `/auth/register`.
@@ -211,6 +215,7 @@ pnpm typecheck
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
 - Admin moderation dashboard and dispute resolution tooling.
+- WebSocket/realtime chat and push notifications for message delivery.
 - Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).
 
 ## Auth Quick Test

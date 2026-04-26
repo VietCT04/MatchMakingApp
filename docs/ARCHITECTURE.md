@@ -51,6 +51,7 @@ apps/mobile/app/
 - Keep request handling in controllers.
 - Keep business logic and orchestration in services.
 - Access persistence only through Prisma service.
+- Match chat is implemented as REST endpoints + permission checks in `ChatService` (polling MVP, no websocket layer yet).
 
 ## Shared Package Responsibility
 - Centralize reusable enums and DTO interfaces:
@@ -74,6 +75,13 @@ apps/mobile/app/
 4. Service performs business logic and calls Prisma.
 5. Prisma executes query against PostgreSQL.
 6. Response returns through service -> controller -> mobile client.
+
+## Chat MVP Flow
+1. Match creator/participant opens chat route (`/match-chat/[id]`).
+2. Mobile fetches `GET /matches/:id/chat/messages` and renders sender/timestamp bubbles.
+3. Mobile optionally polls every few seconds while focused.
+4. Sending uses `POST /matches/:id/chat/messages`.
+5. Backend enforces chat permissions and returns message with sender summary.
 
 ## Future Architecture
 - Auth provider

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MatchParticipantStatus, MatchStatus, Team } from '@sports-matchmaking/shared';
 import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
@@ -8,6 +8,7 @@ import { useMatchDetail } from '../../src/hooks/useMatchDetail';
 import { Screen } from '../../src/components/Screen';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { AppCard } from '../../src/components/ui/AppCard';
+import { AppButton } from '../../src/components/ui/AppButton';
 import { LoadingState } from '../../src/components/states/LoadingState';
 import { ErrorState } from '../../src/components/states/ErrorState';
 import { EmptyState } from '../../src/components/states/EmptyState';
@@ -66,6 +67,7 @@ export default function MatchDetailScreen() {
   }, [joinedParticipants, match?.fitBreakdown?.reliabilityScore]);
 
   const currentParticipant = joinedParticipants.find((item) => item.userId === user?.id);
+  const currentUserParticipation = participants.find((item) => item.userId === user?.id);
   const pendingResult = match?.result ?? null;
   const hasDisputedCurrentResult = pendingResult?.id ? disputedResultIds.includes(pendingResult.id) : false;
 
@@ -94,6 +96,11 @@ export default function MatchDetailScreen() {
     Boolean(user && match && match.createdByUserId === user.id && hasStarted) &&
     match?.status !== MatchStatus.CANCELLED &&
     match?.status !== MatchStatus.COMPLETED;
+  const canReadChat = Boolean(
+    user &&
+      match &&
+      (match.createdByUserId === user.id || currentUserParticipation),
+  );
 
   function setErrorFeedback(message: string) {
     setFeedback({ tone: 'error', message });
@@ -282,6 +289,26 @@ export default function MatchDetailScreen() {
             helperText={toActionHelperText()}
           />
 
+          {canReadChat ? (
+            <AppCard>
+              <Text style={styles.sectionTitle}>Match chat</Text>
+              <Text style={styles.sectionBody}>
+                Coordinate arrival time, court notes, and quick updates with match players.
+              </Text>
+              <AppButton
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: '/match-chat/[id]',
+                    params: { id: match.id },
+                  })
+                }
+              >
+                Open chat
+              </AppButton>
+            </AppCard>
+          ) : null}
+
           <MatchResultCard
             result={pendingResult}
             canSubmitResult={canSubmitResult}
@@ -336,6 +363,14 @@ export default function MatchDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    color: colors.ink,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  sectionBody: {
+    color: colors.muted,
+  },
   successText: {
     color: colors.success,
     fontWeight: '600',

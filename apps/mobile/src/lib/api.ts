@@ -1,4 +1,5 @@
 import type {
+  ChatMessageDto,
   CreateMatchInput,
   MatchDto,
   MatchParticipantDto,
@@ -64,6 +65,11 @@ export type ReportUserInput = {
   reportedUserId: string;
   matchId?: string;
   reason: string;
+};
+
+export type GetMatchMessagesParams = {
+  limit?: number;
+  before?: string;
 };
 
 type RequestOptions = {
@@ -262,6 +268,25 @@ export const apiClient = {
     return request('/reports/users', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  },
+
+  getMatchMessages(matchId: string, params: GetMatchMessagesParams = {}): Promise<ChatMessageDto[]> {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    if (params.before) {
+      query.set('before', params.before);
+    }
+    const suffix = query.toString();
+    return request(`/matches/${matchId}/chat/messages${suffix ? `?${suffix}` : ''}`);
+  },
+
+  sendMatchMessage(matchId: string, body: string): Promise<ChatMessageDto> {
+    return request(`/matches/${matchId}/chat/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
     });
   },
 
