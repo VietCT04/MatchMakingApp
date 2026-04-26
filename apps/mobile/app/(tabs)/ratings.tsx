@@ -2,9 +2,9 @@ import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SportFormat } from '@sports-matchmaking/shared';
-import { useAuth } from '../src/auth/AuthContext';
-import { useUserRatings } from '../src/hooks/useUserRatings';
-import { useSports } from '../src/hooks/useSports';
+import { useAuth } from '../../src/auth/AuthContext';
+import { useUserRatings } from '../../src/hooks/useUserRatings';
+import { useSports } from '../../src/hooks/useSports';
 
 type RatingHistoryWithMatch = {
   id: string;
@@ -140,3 +140,4 @@ const styles = StyleSheet.create({
   },
   retryText: { color: '#1f4ad3', fontWeight: '700' },
 });
+

@@ -347,6 +347,12 @@ Validation errors (from `ValidationPipe`) typically return:
 - Physical devices need `EXPO_PUBLIC_API_URL` set to the development computer LAN address.
 - Current mobile auth context uses JWT tokens stored through Expo SecureStore.
 - `AuthContext` restores token on startup, refreshes current user via `/me` (fallback `/auth/me`), and clears token/session on `401`.
+- Mobile routing now uses Expo Router groups:
+  - `app/(auth)` for login/register
+  - `app/(tabs)` for authenticated app shell (`discover`, `create-match`, `ratings`, `profile`)
+  - `app/match/[id]` for detail flow
+- Authenticated users are routed to `/discover` and use a persistent bottom-tab shell.
+- Shared mobile UI primitives live in `apps/mobile/src/components` (screen/layout, button/input/card/badge/chip, loading/error/empty states).
 - Normal authenticated flow no longer relies on seeded demo user or mock fallback data in screens.
 - Discover supports optional nearby filtering using Expo Location and sends `latitude`, `longitude`, `radiusKm` to `GET /matches`.
 - Discover sends `ranked=true` for authenticated users and surfaces `fitScore` labels (for example `92% fit`) while preserving nearby filtering and radius controls.

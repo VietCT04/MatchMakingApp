@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-04-26: Mobile route groups, tabs, and shared UI primitives
+
+Decision:
+- Reorganize mobile routes into Expo Router groups: `app/(auth)` and `app/(tabs)`.
+- Add authenticated bottom tabs for `discover`, `create-match`, `ratings`, and `profile`.
+- Keep `match/[id]` outside tabs for detail drill-down flow.
+- Introduce app-owned reusable UI primitives in `apps/mobile/src/components`:
+  - layout/header primitives (`Screen`, `ScreenHeader`)
+  - UI primitives (`AppButton`, `AppInput`, `AppCard`, `Badge`, `Chip`)
+  - state components (`LoadingState`, `ErrorState`, `EmptyState`)
+- Refactor discovery/create/auth screens to consume shared primitives.
+
+Reasoning:
+- Prior screen-level `StyleSheet` duplication was increasing maintenance cost and UI drift.
+- Tabs provide a clearer authenticated app shell for demo flow and repeated tasks.
+- App-owned primitives are enough for current MVP without introducing a heavy UI framework migration.
+
+Follow-up:
+- Continue refactoring remaining screens (`match/[id]`, `ratings`, `profile`) to maximize primitive reuse.
+- Add iconography/toast and form/query libraries in later passes when scope permits.
+
 ## 2026-04-26: Rule-based ranked match discovery
 
 Decision:

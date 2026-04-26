@@ -4,27 +4,30 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AuthProvider } from '../src/auth/AuthContext';
 import { useAuth } from '../src/auth/AuthContext';
 
-const PUBLIC_ROUTES = new Set(['login', 'register']);
-
 function AuthGate() {
   const { authLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const currentRoute = segments[0];
-  const isPublicRoute = currentRoute ? PUBLIC_ROUTES.has(currentRoute) : false;
+  const inAuthGroup = segments[0] === '(auth)';
+  const isPublicRoute = inAuthGroup || segments[0] === 'login' || segments[0] === 'register';
 
   useEffect(() => {
     if (authLoading) {
       return;
     }
+    const isRootIndex = segments.length === 0;
     if (!user && !isPublicRoute) {
       router.replace('/login');
+      return;
+    }
+    if (user && isRootIndex) {
+      router.replace('/discover');
       return;
     }
     if (user && isPublicRoute) {
       router.replace('/discover');
     }
-  }, [authLoading, isPublicRoute, router, user]);
+  }, [authLoading, isPublicRoute, router, segments.length, user]);
 
   if (authLoading) {
     return (
@@ -38,6 +41,7 @@ function AuthGate() {
     <Stack
       screenOptions={{
         headerTitleAlign: 'center',
+        headerShown: false,
       }}
     />
   );

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { UserDto } from '@sports-matchmaking/shared';
 import { useFocusEffect } from 'expo-router';
-import { useAuth } from '../src/auth/AuthContext';
-import { useUserRatings } from '../src/hooks/useUserRatings';
-import { useSports } from '../src/hooks/useSports';
+import { useAuth } from '../../src/auth/AuthContext';
+import { useUserRatings } from '../../src/hooks/useUserRatings';
+import { useSports } from '../../src/hooks/useSports';
 
 export default function ProfileScreen() {
   const { user: authUser, authLoading, logout, refreshMe } = useAuth();
@@ -106,3 +106,4 @@ const styles = StyleSheet.create({
   logoutButton: { backgroundColor: '#20304a', borderRadius: 10, padding: 14, alignItems: 'center' },
   logoutText: { color: '#fff', fontWeight: '700' },
 });
+

@@ -14,10 +14,26 @@ flowchart LR
 
 ## Monorepo Structure
 ```txt
-apps/mobile      # React Native app (Expo Router screens)
+apps/mobile      # React Native app (Expo Router route groups + shared UI components)
 apps/api         # NestJS backend + Prisma schema
 packages/shared  # Shared TS enums and DTO interfaces
 docs             # Architecture, API, DB, roadmap, ADRs
+```
+
+## Mobile Routing Structure
+```txt
+apps/mobile/app/
+  (auth)/
+    login.tsx
+    register.tsx
+  (tabs)/
+    _layout.tsx
+    discover.tsx
+    create-match.tsx
+    ratings.tsx
+    profile.tsx
+  match/[id].tsx
+  _layout.tsx
 ```
 
 ## Mobile Responsibility
@@ -26,6 +42,8 @@ docs             # Architecture, API, DB, roadmap, ADRs
 - Delegate data access to `src/lib/api.ts`.
 - Use shared enums/DTO shapes from `packages/shared` where practical.
 - Surface loading/error/empty states when backend data is unavailable.
+- Keep shared visual primitives in `apps/mobile/src/components` to reduce style duplication.
+- Keep authenticated shell navigation in Expo Router tabs for Discover/Create/Ratings/Profile.
 
 ## Backend Responsibility
 - Expose REST endpoints.

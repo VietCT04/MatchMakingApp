@@ -1,14 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useMatches } from '../src/hooks/useMatches';
-import { useSports } from '../src/hooks/useSports';
+import { StyleSheet, Text, View } from 'react-native';
 import { MatchStatus } from '@sports-matchmaking/shared';
-import { useAuth } from '../src/auth/AuthContext';
+import { useMatches } from '../../src/hooks/useMatches';
+import { useSports } from '../../src/hooks/useSports';
+import { useAuth } from '../../src/auth/AuthContext';
+import { Screen } from '../../src/components/Screen';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { AppButton } from '../../src/components/ui/AppButton';
+import { Chip } from '../../src/components/ui/Chip';
+import { AppCard } from '../../src/components/ui/AppCard';
+import { Badge } from '../../src/components/ui/Badge';
+import { LoadingState } from '../../src/components/states/LoadingState';
+import { ErrorState } from '../../src/components/states/ErrorState';
+import { EmptyState } from '../../src/components/states/EmptyState';
 
 const RADIUS_OPTIONS = [3, 5, 10, 20] as const;
-const LOCATION_PERMISSION_OFF_MESSAGE = 'Location permission is off. Showing all open matches.';
+const LOCATION_PERMISSION_OFF_MESSAGE = 'Location is off. Showing all open matches.';
 
 export default function DiscoverScreen() {
   const { token } = useAuth();
@@ -48,10 +57,6 @@ export default function DiscoverScreen() {
     }, [refreshMatches]),
   );
 
-  function onSportSelect(sportId?: string) {
-    setSelectedSportId(sportId);
-  }
-
   async function handleUseMyLocation() {
     setLocationLoading(true);
     setLocationError('');
@@ -71,9 +76,7 @@ export default function DiscoverScreen() {
       });
       setLocationPermissionOff(false);
     } catch (requestError) {
-      setLocationError(
-        requestError instanceof Error ? requestError.message : 'Could not get your current location.',
-      );
+      setLocationError(requestError instanceof Error ? requestError.message : 'Could not get your current location.');
     } finally {
       setLocationLoading(false);
     }
@@ -85,85 +88,64 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{token ? 'Best matches for you' : 'Open Matches'}</Text>
-      <Text style={styles.subtitle}>
-        {token ? 'Ranked by fit score for your profile and match preferences.' : 'Browse open matches and join a game.'}
-      </Text>
+    <Screen>
+      <ScreenHeader
+        title={token ? 'Best matches for you' : 'Open matches'}
+        subtitle={token ? 'Ranked by fit score for your profile.' : 'Browse open matches and join a game.'}
+      />
 
       <View style={styles.locationSection}>
-        <Pressable style={styles.locationButton} onPress={handleUseMyLocation} disabled={locationLoading}>
-          <Text style={styles.locationButtonText}>
-            {locationLoading ? 'Getting location...' : 'Use my location'}
-          </Text>
-        </Pressable>
+        <AppButton loading={locationLoading} onPress={handleUseMyLocation}>
+          Use my location
+        </AppButton>
         {usingLocation ? (
           <View style={styles.locationInfoBox}>
-            <Text style={styles.locationInfoText}>
-              Nearby mode enabled within {selectedRadiusKm} km.
-            </Text>
-            <Pressable style={styles.clearButton} onPress={clearLocationFilter}>
-              <Text style={styles.clearButtonText}>Show all open matches</Text>
-            </Pressable>
+            <Text style={styles.locationInfoText}>Nearby mode enabled within {selectedRadiusKm} km.</Text>
+            <AppButton variant="secondary" onPress={clearLocationFilter}>Show all open matches</AppButton>
           </View>
         ) : null}
-        {!usingLocation && locationPermissionOff ? (
-          <Text style={styles.muted}>{LOCATION_PERMISSION_OFF_MESSAGE}</Text>
-        ) : null}
-        {locationError ? <Text style={styles.error}>{locationError}</Text> : null}
+        {!usingLocation && locationPermissionOff ? <Text style={styles.muted}>{LOCATION_PERMISSION_OFF_MESSAGE}</Text> : null}
+        {locationError ? <ErrorState message={locationError} /> : null}
       </View>
 
       <View style={styles.filterRow}>
         {RADIUS_OPTIONS.map((radius) => (
-          <Pressable
+          <Chip
             key={radius}
-            style={[styles.filter, selectedRadiusKm === radius && styles.filterActive]}
+            label={`${radius} km`}
+            active={selectedRadiusKm === radius}
+            disabled={!usingLocation}
             onPress={() => setSelectedRadiusKm(radius)}
-          >
-            <Text style={[styles.filterText, selectedRadiusKm === radius && styles.filterTextActive]}>
-              {radius} km
-            </Text>
-          </Pressable>
+          />
         ))}
       </View>
 
       <View style={styles.filterRow}>
         {sportOptions.map((sport) => (
-          <Pressable
+          <Chip
             key={sport.id ?? 'all'}
-            style={[styles.filter, selectedSportId === sport.id && styles.filterActive]}
-            onPress={() => onSportSelect(sport.id)}
-          >
-            <Text style={[styles.filterText, selectedSportId === sport.id && styles.filterTextActive]}>
-              {sport.name}
-            </Text>
-          </Pressable>
+            label={sport.name}
+            active={selectedSportId === sport.id}
+            onPress={() => setSelectedSportId(sport.id)}
+          />
         ))}
       </View>
 
-      {loading ? <Text style={styles.muted}>Loading matches...</Text> : null}
-      {error ? (
-        <View style={styles.messageBox}>
-          <Text style={styles.error}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={refresh}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {!loading && !error && matches.length === 0 ? <Text style={styles.muted}>No open matches found.</Text> : null}
+      {loading ? <LoadingState message="Loading matches..." /> : null}
+      {error ? <ErrorState message={error} onRetry={refresh} /> : null}
+      {!loading && !error && matches.length === 0 ? <EmptyState title="No open matches found." message="Try another sport or create a match." /> : null}
 
       {matches.map((match) => {
         const players = match.participants?.filter((item) => item.status === 'JOINED').length ?? 0;
         const ratingRange = `${match.minRating ?? 'Any'}-${match.maxRating ?? 'Any'}`;
         return (
-          <Pressable
+          <AppCard
             key={match.id}
-            style={styles.card}
             onPress={() => router.push({ pathname: '/match/[id]', params: { id: match.id } })}
           >
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>{match.title}</Text>
-              <Text style={styles.statusPill}>{match.status}</Text>
+              <Badge>{match.status}</Badge>
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Sport</Text>
@@ -190,92 +172,26 @@ export default function DiscoverScreen() {
               <Text style={styles.metaValue}>{players}/{match.maxPlayers}</Text>
             </View>
             <View style={styles.badgeRow}>
-              {typeof match.fitScore === 'number' ? (
-                <Text style={styles.fitBadge}>{Math.round(match.fitScore)}% fit</Text>
-              ) : null}
-              {usingLocation && match.distanceKm !== undefined ? (
-                <Text style={styles.distanceBadge}>{match.distanceKm.toFixed(1)} km away</Text>
-              ) : null}
+              {typeof match.fitScore === 'number' ? <Badge tone="info">{Math.round(match.fitScore)}% fit</Badge> : null}
+              {usingLocation && match.distanceKm !== undefined ? <Badge tone="success">{match.distanceKm.toFixed(1)} km away</Badge> : null}
             </View>
-          </Pressable>
+          </AppCard>
         );
       })}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6fb' },
-  content: { padding: 20, gap: 12, paddingBottom: 24 },
-  title: { fontSize: 28, fontWeight: '700', color: '#17263b' },
-  subtitle: { color: '#5f6d86' },
   locationSection: { gap: 8 },
-  locationButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#1f4ad3',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  locationButtonText: { color: '#fff', fontWeight: '700' },
   locationInfoBox: { gap: 8 },
   locationInfoText: { color: '#20304a', fontWeight: '600' },
-  clearButton: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#20304a',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  clearButtonText: { color: '#20304a', fontWeight: '600' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  filter: { borderWidth: 1, borderColor: '#cfd7e6', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8 },
-  filterActive: { backgroundColor: '#20304a', borderColor: '#20304a' },
-  filterText: { color: '#20304a', textTransform: 'capitalize' },
-  filterTextActive: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderColor: '#d0d8e6', borderRadius: 12, borderWidth: 1, padding: 14, gap: 6 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: '#17263b', flex: 1 },
-  statusPill: {
-    fontSize: 12,
-    color: '#20304a',
-    backgroundColor: '#e7ecf7',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontWeight: '700',
-  },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   metaLabel: { color: '#66748e', fontSize: 13 },
   metaValue: { color: '#20304a', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  fitBadge: {
-    color: '#1f4ad3',
-    fontWeight: '700',
-    backgroundColor: '#e9efff',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  distanceBadge: {
-    color: '#067647',
-    fontWeight: '700',
-    backgroundColor: '#e7f6ed',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },
-  error: { color: '#b42318' },
-  retryButton: {
-    alignSelf: 'flex-start',
-    borderColor: '#1f4ad3',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  retryText: { color: '#1f4ad3', fontWeight: '700' },
 });
