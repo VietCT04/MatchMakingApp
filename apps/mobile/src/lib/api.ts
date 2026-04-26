@@ -359,7 +359,22 @@ export const apiClient = {
     return request('/me/notification-preferences');
   },
 
+  getNotificationPreferences(): Promise<NotificationPreferenceDto> {
+    return request('/me/notification-preferences');
+  },
+
   updateMyNotificationPreferences(
+    payload: Partial<
+      Pick<NotificationPreferenceDto, 'matchUpdates' | 'chatMessages' | 'results' | 'trustSafety' | 'ratingUpdates'>
+    >,
+  ): Promise<NotificationPreferenceDto> {
+    return request('/me/notification-preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateNotificationPreferences(
     payload: Partial<
       Pick<NotificationPreferenceDto, 'matchUpdates' | 'chatMessages' | 'results' | 'trustSafety' | 'ratingUpdates'>
     >,

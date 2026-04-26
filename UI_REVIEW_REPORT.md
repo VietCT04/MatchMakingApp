@@ -614,6 +614,11 @@ This section tracks what has been implemented from this review, and what is stil
   - read/unread list state
   - focus refresh + manual refresh
   - tap-to-open notification with match deep-link support
+- [x] Added mobile Notification settings screen (`/notification-settings`) with save-based toggle UX:
+  - fetch current backend preferences
+  - edit `matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`
+  - loading/error/retry and save success/error feedback
+  - entry point from Notifications tab
 - [x] Added reliability summary card on Profile screen.
 - [x] Extended Discover cards to surface reliability from ranked breakdown when available.
 
@@ -629,3 +634,5 @@ This section tracks what has been implemented from this review, and what is stil
 - [ ] Ratings/Profile deeper componentization (`RatingCard`, `Avatar`, `StatCard`, trend indicators).
 - [ ] Toast layer for action feedback.
 - [ ] Full componentization pass for all existing screens (some screens are still mixed with local styles).
+- [ ] Advanced notification controls (per-match mute and quiet hours).
+- [ ] Push receipt analytics visibility in UI.

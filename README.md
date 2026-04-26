@@ -22,6 +22,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Match-specific chat MVP (REST + polling)
 - In-app notifications MVP (database-backed, JWT protected, read/unread workflow)
 - Expo push notifications MVP (delivery layer built on in-app notifications)
+- Mobile notification preferences UI (users can edit push categories)
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -213,6 +214,8 @@ pnpm typecheck
 - Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
 - Match chat screen supports REST polling MVP (open chat from match detail, read/send messages, manual refresh, and periodic refresh while focused).
 - Notifications tab shows unread count, list/read state, mark-all-as-read, and deep-link to match detail when `data.matchId` is present.
+- Notifications tab includes navigation to Notification settings.
+- Notification settings screen (`/notification-settings`) lets users edit and save push preference flags (`matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`).
 - Mobile auth flow now attempts push registration after session restore/login/register and deactivates known token on logout.
 - Push notification tap navigates to match detail when `matchId` exists, otherwise to Notifications tab.
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
@@ -226,7 +229,9 @@ pnpm typecheck
 
 ## Remaining TODOs
 - Full map UI and richer map-based nearby discovery.
-- Advanced push UX/preferences screen in mobile (basic backend preferences are implemented).
+- Per-match notification mute controls.
+- Quiet hours / do-not-disturb windows.
+- Push receipt analytics and delivery diagnostics UI.
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
 - Admin moderation dashboard and dispute resolution tooling.

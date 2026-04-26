@@ -506,6 +506,10 @@ Push preference mapping:
 - `RATING_UPDATED` -> `ratingUpdates`
 - `SYSTEM` -> always allowed
 
+Mobile usage:
+- The Notifications tab links to `/notification-settings`.
+- The settings screen fetches preferences with `GET /me/notification-preferences`, allows local toggle edits, and saves with `PATCH /me/notification-preferences`.
+
 ## Ratings Endpoints
 ### `GET /ratings/defaults`
 Response:

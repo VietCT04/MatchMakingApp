@@ -15,8 +15,9 @@ Reasoning:
 - Category preferences can be enforced server-side before sending push.
 
 Follow-up:
-- Add mobile settings UI for notification preferences.
+- Mobile settings UI for notification preferences is now implemented (`/notification-settings` with save-based toggles).
 - Add push ticket receipt handling and deeper delivery observability.
+- Add finer-grained controls (per-match mute and quiet-hours preferences).
 - Add websocket realtime notification delivery for active sessions.
 
 ## 2026-04-26: Database-backed in-app notifications MVP

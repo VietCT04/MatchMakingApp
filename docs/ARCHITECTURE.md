@@ -33,6 +33,7 @@ apps/mobile/app/
     notifications.tsx
     ratings.tsx
     profile.tsx
+  notification-settings.tsx
   match/[id].tsx
   match-chat/[id].tsx
   _layout.tsx
@@ -95,6 +96,7 @@ apps/mobile/app/
 3. Mobile Notifications tab fetches notifications and unread count via REST.
 4. Users mark one or all notifications as read.
 5. Notification tap can deep-link to match detail using `data.matchId`.
+6. Notifications screen links to `/notification-settings`, where users manage backend push category preferences.
 
 ## Push Delivery Flow
 1. `NotificationsService` creates database notification rows (source of truth).
@@ -107,7 +109,7 @@ apps/mobile/app/
 - Auth provider
   - Current MVP uses email/password JWT auth; a future provider can replace or augment it.
 - Push notifications
-  - Expand Expo push delivery with receipts, retries, and preference UX.
+  - Expand Expo push delivery with receipts, retries, per-match mute, and quiet-hours controls.
 - Realtime chat
   - Add websocket or SSE channel scoped to match rooms.
 - Payment

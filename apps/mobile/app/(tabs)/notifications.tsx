@@ -111,6 +111,9 @@ export default function NotificationsScreen() {
         <AppButton variant="secondary" onPress={() => void handleEnablePush()}>
           Enable push notifications
         </AppButton>
+        <AppButton variant="secondary" onPress={() => router.push('/notification-settings')}>
+          Notification settings
+        </AppButton>
         <AppButton variant="secondary" onPress={() => void refresh()}>
           Refresh
         </AppButton>

@@ -101,6 +101,7 @@ sports-matchmaking/
   - Match detail
   - Match chat
   - Notifications
+  - Notification settings
   - Rating
 - Mobile API client in `apps/mobile/src/lib/api.ts` calls the backend through centralized config.
 
@@ -153,6 +154,10 @@ sports-matchmaking/
   - read/unread visual state
   - refresh on focus
   - tap to mark as read and open match detail when `data.matchId` exists
+- Notification settings route (`/notification-settings`) provides:
+  - load and edit current push preferences
+  - save-based toggles for `matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`
+  - loading/error/retry and save success/error states
 - Mobile auth now attempts push token registration after login/register/session restore, and deactivates known token on logout.
 - Push notification taps navigate to match detail when `matchId` exists, otherwise to Notifications tab.
 - Profile includes a reliability stats card (score, completions, cancellations, late cancellations, no-shows, disputes, reports).
@@ -223,10 +228,11 @@ sports-matchmaking/
 1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
 2. Move nearby filtering from app-layer Haversine to PostGIS/indexed geospatial queries.
 3. Add websocket realtime chat/notification delivery using existing notification events.
-4. Implement payments.
-5. Add map UI for visual nearby discovery.
-6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
-7. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
+4. Add advanced notification controls (per-match mute, quiet hours) and push receipt analytics.
+5. Implement payments.
+6. Add map UI for visual nearby discovery.
+7. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
+8. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
 
 ## Local Development Commands
 From repo root:
