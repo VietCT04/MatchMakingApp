@@ -1,42 +1,63 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { MatchStatus } from '@prisma/client';
+import { MatchParticipantStatus, MatchStatus, SportFormat } from '@prisma/client';
 import { calculateDistanceKm } from '../common/geo/haversine';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchRankingService } from './match-ranking.service';
 import { MatchQueryDto } from './dto.match-query';
 import { toPrismaMatchStatus, toPrismaSportFormat } from './match-enum.mapper';
 
 @Injectable()
 export class MatchQueryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly matchRankingService: MatchRankingService,
+  ) {}
 
-  async findAll(query: MatchQueryDto = {}) {
+  async findAll(query: MatchQueryDto = {}, userId?: string) {
     this.validateRatingRange(query.minRating, query.maxRating);
     this.validateNearbyLocationQuery(query);
+
+    const now = new Date();
+    const status = query.status ? toPrismaMatchStatus(query.status) : MatchStatus.OPEN;
+    const startsAfterDate = query.startsAfter ? new Date(query.startsAfter) : undefined;
+    const startsBeforeDate = query.startsBefore ? new Date(query.startsBefore) : undefined;
+    const startsAtLowerBound =
+      status === MatchStatus.OPEN
+        ? this.maxDate(now, startsAfterDate)
+        : startsAfterDate;
 
     const matches = await this.prisma.match.findMany({
       where: {
         sportId: query.sportId,
         format: query.format ? toPrismaSportFormat(query.format) : undefined,
-        status: query.status ? toPrismaMatchStatus(query.status) : MatchStatus.OPEN,
+        status,
         venueId: query.venueId,
         minRating: query.minRating === undefined ? undefined : { gte: query.minRating },
         maxRating: query.maxRating === undefined ? undefined : { lte: query.maxRating },
         startsAt: {
-          gte: query.startsAfter ? new Date(query.startsAfter) : undefined,
-          lte: query.startsBefore ? new Date(query.startsBefore) : undefined,
+          gte: startsAtLowerBound,
+          lte: startsBeforeDate,
         },
       },
       include: { participants: true, result: true, sport: true, venue: true },
       orderBy: { startsAt: 'asc' },
     });
 
-    if (!this.hasNearbyLocationQuery(query)) {
-      return matches;
-    }
-
-    // TODO: Replace app-layer geo filtering with PostGIS/indexed geospatial query when available.
-    const filtered = matches
+    const hasNearbyFilter = this.hasNearbyLocationQuery(query);
+    const withDistanceAndAvailability: Array<(typeof matches)[number] & { distanceKm?: number }> = matches
       .map((match) => {
+        const joinedParticipantCount = match.participants.filter(
+          (participant) => participant.status === MatchParticipantStatus.JOINED,
+        ).length;
+        const openSlots = match.maxPlayers - joinedParticipantCount;
+        if (status === MatchStatus.OPEN && openSlots <= 0) {
+          return null;
+        }
+
+        if (!hasNearbyFilter) {
+          return match;
+        }
+
         const venueLatitude = match.venue?.latitude;
         const venueLongitude = match.venue?.longitude;
         if (venueLatitude === null || venueLatitude === undefined || venueLongitude === null || venueLongitude === undefined) {
@@ -58,10 +79,44 @@ export class MatchQueryService {
           distanceKm: Number(distanceKm.toFixed(2)),
         };
       })
-      .filter((match): match is NonNullable<typeof match> => match !== null)
-      .sort((a, b) => a.distanceKm - b.distanceKm || a.startsAt.getTime() - b.startsAt.getTime());
+      .filter((match): match is NonNullable<typeof match> => match !== null);
 
-    return filtered;
+    if (query.ranked !== true) {
+      if (!hasNearbyFilter) {
+        return withDistanceAndAvailability;
+      }
+
+      return withDistanceAndAvailability.sort(
+        (a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0) || a.startsAt.getTime() - b.startsAt.getTime(),
+      );
+    }
+
+    const userRatingsBySportFormat = await this.getUserRatingsBySportAndFormat(userId, withDistanceAndAvailability);
+
+    return withDistanceAndAvailability
+      .map((match) => {
+        const joinedParticipantCount = match.participants.filter(
+          (participant) => participant.status === MatchParticipantStatus.JOINED,
+        ).length;
+        const ratingKey = this.toSportFormatKey(match.sportId, match.format);
+        const userRating = userRatingsBySportFormat.get(ratingKey) ?? this.matchRankingService.getDefaultRating();
+        const fit = this.matchRankingService.calculateFitScore({
+          distanceKm: match.distanceKm,
+          radiusKm: query.radiusKm,
+          userRating,
+          minRating: match.minRating,
+          maxRating: match.maxRating,
+          startsAt: match.startsAt,
+          participantCount: joinedParticipantCount,
+          maxPlayers: match.maxPlayers,
+        });
+
+        return {
+          ...match,
+          ...fit,
+        };
+      })
+      .sort((a, b) => b.fitScore - a.fitScore || a.startsAt.getTime() - b.startsAt.getTime());
   }
 
   async findOne(id: string) {
@@ -101,5 +156,38 @@ export class MatchQueryService {
         'latitude, longitude, and radiusKm must all be provided for nearby discovery',
       );
     }
+  }
+
+  private async getUserRatingsBySportAndFormat(matchesUserId: string | undefined, matches: Array<{ sportId: string; format: SportFormat }>) {
+    if (!matchesUserId || matches.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const uniquePairs = Array.from(
+      new Set(matches.map((match) => this.toSportFormatKey(match.sportId, match.format))),
+    ).map((key) => {
+      const [sportId, format] = key.split(':') as [string, SportFormat];
+      return { sportId, format };
+    });
+
+    const ratings = await this.prisma.userSportRating.findMany({
+      where: {
+        userId: matchesUserId,
+        OR: uniquePairs,
+      },
+    });
+
+    return new Map(ratings.map((rating) => [this.toSportFormatKey(rating.sportId, rating.format), rating.rating]));
+  }
+
+  private toSportFormatKey(sportId: string, format: SportFormat): string {
+    return `${sportId}:${format}`;
+  }
+
+  private maxDate(left: Date, right?: Date): Date {
+    if (!right) {
+      return left;
+    }
+    return left.getTime() >= right.getTime() ? left : right;
   }
 }

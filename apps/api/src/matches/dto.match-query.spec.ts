@@ -33,4 +33,17 @@ describe('MatchQueryDto location validation', () => {
     const errors = await validate(dto);
     expect(errors.some((error) => error.property === 'startsAfter')).toBe(true);
   });
+
+  it('accepts ranked=true query flag', async () => {
+    const dto = plainToInstance(MatchQueryDto, { ranked: 'true' });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+    expect(dto.ranked).toBe(true);
+  });
+
+  it('rejects invalid ranked value', async () => {
+    const dto = plainToInstance(MatchQueryDto, { ranked: 'maybe' });
+    const errors = await validate(dto);
+    expect(errors.some((error) => error.property === 'ranked')).toBe(true);
+  });
 });

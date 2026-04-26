@@ -1,6 +1,6 @@
 import { MatchStatus, SportFormat } from '@sports-matchmaking/shared';
-import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsLatitude, IsLongitude, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsLatitude, IsLongitude, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
 export class MatchQueryDto {
   @IsOptional()
@@ -54,4 +54,17 @@ export class MatchQueryDto {
   @Min(0.1)
   @Max(100)
   radiusKm?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true') {
+      return true;
+    }
+    if (value === false || value === 'false') {
+      return false;
+    }
+    return value;
+  })
+  @IsBoolean()
+  ranked?: boolean;
 }

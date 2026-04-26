@@ -1,5 +1,24 @@
 # Decision Log
 
+## 2026-04-26: Rule-based ranked match discovery
+
+Decision:
+- Extend `GET /matches` with optional `ranked=true` personalized sorting.
+- Keep ranking math in a dedicated `MatchRankingService`; controllers stay thin.
+- Use weighted fit scoring: distance (35%), rating fit (35%), time (15%), slot availability (15%).
+- Keep public discovery working without JWT by using neutral/default rating fallback.
+- Return `fitScore` and `fitBreakdown` for ranked responses to aid debugging and UI rollout.
+
+Reasoning:
+- Improves discovery quality immediately without introducing AI matchmaking complexity.
+- Keeps logic explicit, testable, and easy to tune.
+- Maintains compatibility with existing non-ranked and nearby discovery behavior.
+
+Follow-up:
+- Add reliability and availability-window signals to ranking.
+- Add learned recommendation signals after enough product data exists.
+- Move geospatial filtering to PostGIS/indexed queries before large-scale rollout.
+
 ## 2026-04-26: Nearby match discovery via `GET /matches` query extension
 
 Decision:

@@ -37,6 +37,7 @@ export function useMatches(filters: MatchFilters = {}): UseMatchesResult {
     filters.latitude,
     filters.longitude,
     filters.radiusKm,
+    filters.ranked,
   ]);
 
   useEffect(() => {

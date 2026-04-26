@@ -16,6 +16,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Prisma schema for key relational entities
 - Elo helper utilities with unit tests
 - Nearby open-match discovery using venue coordinates and Haversine distance filtering
+- Rule-based ranked discovery (`fitScore`) for personalized match ordering
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -158,7 +159,9 @@ pnpm typecheck
 - Phase 8: advanced rating system (Glicko-2/TrueSkill)
 
 ## Implemented MVP Backend Flow
-- `GET /matches` supports filters: `sportId`, `format`, `status`, `minRating`, `maxRating`, `startsAfter`, `startsBefore`, `venueId`.
+- `GET /matches` supports filters: `sportId`, `format`, `status`, `minRating`, `maxRating`, `startsAfter`, `startsBefore`, `venueId`, `latitude`, `longitude`, `radiusKm`, `ranked`.
+- `GET /matches?ranked=true` adds `fitScore` + `fitBreakdown` and sorts by best fit for the authenticated user.
+- Ranked fit is rule-based (distance, rating fit, time, slot availability), not AI matchmaking.
 - `POST /matches/:id/join` joins a user, prevents duplicates/full/completed/cancelled matches, and marks a full match as `FULL`.
 - `POST /matches/:id/leave` marks a participant as `LEFT` and reopens a full match if space becomes available.
 - `POST /matches/:id/results` records an unverified match result.
@@ -175,6 +178,7 @@ pnpm typecheck
   - radius filter options (`3`, `5`, `10`, `20` km)
   - distance labels on cards (for example `2.4 km away`)
   - denied permission fallback message while still showing all open matches
+- Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
 - Create Match fetches sports/venues and posts to `POST /matches`.
 - Match Detail supports join, leave, submit result, verify result, and refreshes data after actions.
 - Login/Register use `/auth/login` and `/auth/register`.
@@ -191,6 +195,7 @@ pnpm typecheck
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
 - Advanced rating/dispute rules.
+- Richer ranking signals (availability windows, reliability/no-show history, and learned recommendations).
 
 ## Auth Quick Test
 ```bash
@@ -214,6 +219,8 @@ curl http://localhost:3000/health
 curl http://localhost:3000/sports
 curl http://localhost:3000/users
 curl "http://localhost:3000/matches?status=OPEN"
+curl "http://localhost:3000/matches?status=OPEN&ranked=true&latitude=1.3002&longitude=103.8001&radiusKm=5" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 Join, submit, and verify flow:

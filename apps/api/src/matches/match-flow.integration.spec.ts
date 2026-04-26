@@ -11,6 +11,7 @@ import { MatchResultVerificationService } from './match-result-verification.serv
 import { MatchLifecycleService } from './match-lifecycle.service';
 import { MatchParticipationService } from './match-participation.service';
 import { MatchQueryService } from './match-query.service';
+import { MatchRankingService } from './match-ranking.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
 
 const sportId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -24,7 +25,8 @@ const describeIntegration = hasDatabaseUrl ? describe : describe.skip;
 
 describeIntegration('MVP match flow integration', () => {
   const prisma = new PrismaService();
-  const queryService = new MatchQueryService(prisma);
+  const rankingService = new MatchRankingService();
+  const queryService = new MatchQueryService(prisma, rankingService);
   const lifecycleService = new MatchLifecycleService(prisma, queryService);
   const participationService = new MatchParticipationService(prisma, queryService, lifecycleService);
   const resultSubmissionService = new MatchResultSubmissionService(prisma, queryService);

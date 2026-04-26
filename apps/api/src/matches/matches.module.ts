@@ -7,6 +7,8 @@ import { MatchParticipationService } from './match-participation.service';
 import { MatchQueryService } from './match-query.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
 import { MatchResultVerificationService } from './match-result-verification.service';
+import { MatchRankingService } from './match-ranking.service';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 
 @Module({
   imports: [RatingsModule],
@@ -14,10 +16,12 @@ import { MatchResultVerificationService } from './match-result-verification.serv
   providers: [
     MatchesService,
     MatchQueryService,
+    MatchRankingService,
     MatchLifecycleService,
     MatchParticipationService,
     MatchResultSubmissionService,
     MatchResultVerificationService,
+    OptionalJwtAuthGuard,
   ],
   exports: [MatchesService, MatchResultVerificationService],
 })

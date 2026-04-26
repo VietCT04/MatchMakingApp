@@ -146,6 +146,7 @@ Supported query filters:
 - `latitude`
 - `longitude`
 - `radiusKm`
+- `ranked` (`true` / `false`)
 
 Default behavior: returns `OPEN` matches unless `status` is provided.
 
@@ -153,6 +154,35 @@ Nearby behavior:
 - If `latitude`, `longitude`, and `radiusKm` are all provided, matches are filtered to venues within radius.
 - `distanceKm` is included per match in nearby mode.
 - If location params are not provided, existing non-location discovery behavior stays unchanged.
+
+Ranked behavior:
+- If `ranked=true`, response includes `fitScore` and `fitBreakdown` per match and results are sorted by `fitScore` descending.
+- If JWT is present, ranking uses the authenticated user's rating for the match sport+format.
+- If JWT is absent (public discovery), ranking falls back to neutral/default rating behavior and still returns valid ranked output.
+- Ranking is rule-based (distance, rating fit, time, slot availability), not AI-driven.
+
+Fit score formula (0-100):
+- `fitScore = distanceScore * 0.35 + ratingFitScore * 0.35 + timeScore * 0.15 + slotAvailabilityScore * 0.15`
+- `distanceScore`: linear drop from `100` at `0 km` to `0` at `radiusKm` (neutral `50` if no location).
+- `ratingFitScore`: `100` when inside match range; decays as user rating moves outside range; defaults to rating `1200` when missing.
+- `timeScore`: future matches score higher; past matches do not appear in default `OPEN` discovery.
+- `slotAvailabilityScore`: higher when more slots are open; full matches do not appear in default `OPEN` discovery.
+
+Ranked response shape example:
+```json
+{
+  "id": "match-uuid",
+  "title": "Saturday Doubles",
+  "distanceKm": 2.4,
+  "fitScore": 92.35,
+  "fitBreakdown": {
+    "distanceScore": 88,
+    "ratingFitScore": 100,
+    "timeScore": 90,
+    "slotAvailabilityScore": 80
+  }
+}
+```
 
 Nearby validation:
 - `latitude`: `-90` to `90`
@@ -319,3 +349,4 @@ Validation errors (from `ValidationPipe`) typically return:
 - `AuthContext` restores token on startup, refreshes current user via `/me` (fallback `/auth/me`), and clears token/session on `401`.
 - Normal authenticated flow no longer relies on seeded demo user or mock fallback data in screens.
 - Discover supports optional nearby filtering using Expo Location and sends `latitude`, `longitude`, `radiusKm` to `GET /matches`.
+- Discover sends `ranked=true` for authenticated users and surfaces `fitScore` labels (for example `92% fit`) while preserving nearby filtering and radius controls.

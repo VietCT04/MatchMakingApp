@@ -93,6 +93,13 @@ export interface MatchWithDetailsDto extends MatchDto {
   sport?: SportDto;
   venue?: VenueDto | null;
   distanceKm?: number;
+  fitScore?: number;
+  fitBreakdown?: {
+    distanceScore: number;
+    ratingFitScore: number;
+    timeScore: number;
+    slotAvailabilityScore: number;
+  };
 }
 
 export interface RatingDto {

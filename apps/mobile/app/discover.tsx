@@ -5,11 +5,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMatches } from '../src/hooks/useMatches';
 import { useSports } from '../src/hooks/useSports';
 import { MatchStatus } from '@sports-matchmaking/shared';
+import { useAuth } from '../src/auth/AuthContext';
 
 const RADIUS_OPTIONS = [3, 5, 10, 20] as const;
 const LOCATION_PERMISSION_OFF_MESSAGE = 'Location permission is off. Showing all open matches.';
 
 export default function DiscoverScreen() {
+  const { token } = useAuth();
   const [selectedSportId, setSelectedSportId] = useState<string | undefined>();
   const [selectedRadiusKm, setSelectedRadiusKm] = useState<number>(5);
   const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -28,6 +30,7 @@ export default function DiscoverScreen() {
     latitude: locationCoords?.latitude,
     longitude: locationCoords?.longitude,
     radiusKm: locationCoords ? selectedRadiusKm : undefined,
+    ranked: Boolean(token),
   });
 
   const loading = sportsLoading || matchesLoading || locationLoading;
@@ -83,7 +86,7 @@ export default function DiscoverScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Open Matches</Text>
+      <Text style={styles.title}>{token ? 'Best matches for you' : 'Open Matches'}</Text>
 
       <View style={styles.locationSection}>
         <Pressable style={styles.locationButton} onPress={handleUseMyLocation} disabled={locationLoading}>
@@ -159,6 +162,9 @@ export default function DiscoverScreen() {
             <Text style={styles.line}>{new Date(match.startsAt).toLocaleString()}</Text>
             <Text style={styles.line}>{match.format} | {players}/{match.maxPlayers} players | {match.status}</Text>
             <Text style={styles.line}>Rating {match.minRating ?? 'any'}-{match.maxRating ?? 'any'}</Text>
+            {typeof match.fitScore === 'number' ? (
+              <Text style={styles.fit}>{Math.round(match.fitScore)}% fit</Text>
+            ) : null}
             {usingLocation && match.distanceKm !== undefined ? (
               <Text style={styles.distance}>{match.distanceKm.toFixed(1)} km away</Text>
             ) : null}
@@ -201,6 +207,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderColor: '#d0d8e6', borderRadius: 8, borderWidth: 1, padding: 14, gap: 4 },
   cardTitle: { fontSize: 17, fontWeight: '700' },
   line: { color: '#44516a' },
+  fit: { color: '#1f4ad3', fontWeight: '700' },
   distance: { color: '#067647', fontWeight: '700' },
   messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },

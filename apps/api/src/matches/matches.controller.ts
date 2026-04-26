@@ -9,6 +9,7 @@ import { CreateMatchDto } from './dto.create-match';
 import { JoinMatchDto } from './dto.join-match';
 import { SubmitResultDto } from './dto.submit-result';
 import { MatchResultVerificationService } from './match-result-verification.service';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 
 @Controller('matches')
 export class MatchesController {
@@ -18,8 +19,9 @@ export class MatchesController {
   ) {}
 
   @Get()
-  findAll(@Query() query: MatchQueryDto) {
-    return this.matchesService.findAll(query);
+  @UseGuards(OptionalJwtAuthGuard)
+  findAll(@Query() query: MatchQueryDto, @CurrentUser() user?: AuthUser) {
+    return this.matchesService.findAll(query, user);
   }
 
   @Get(':id')

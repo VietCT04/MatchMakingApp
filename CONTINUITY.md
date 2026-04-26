@@ -47,6 +47,7 @@ sports-matchmaking/
 - CRUD skeletons for users, sports, venues, matches.
 - Match discovery filters on `GET /matches`.
 - Match discovery supports optional nearby filtering via `latitude` + `longitude` + `radiusKm`, computed with Haversine in service logic.
+- Match discovery supports optional ranked mode (`ranked=true`) with rule-based `fitScore` + `fitBreakdown` ordering.
 - Match participant endpoints:
   - `POST /matches/:id/participants` (legacy alias)
   - `POST /matches/:id/join`
@@ -106,6 +107,7 @@ sports-matchmaking/
 - Full MVP mobile flow is stable: `register/login -> discover -> create -> join -> submit result -> verify by different participant -> rating update -> logout`.
 - Temporary demo-user/dummy match path has been removed from the normal app flow.
 - Discover screen now supports current-location filtering with a radius selector (3/5/10/20 km), and gracefully falls back to showing all open matches if permission is denied.
+- Discover now requests ranked results for authenticated users and shows `NN% fit` labels on match cards.
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
 
@@ -132,6 +134,7 @@ sports-matchmaking/
 - Base local URL: `http://localhost:3000`.
 - Error responses use Nest defaults (statusCode/message/error) for exceptions.
 - Detailed endpoint docs: [docs/API.md](./docs/API.md).
+- `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI).
 
 ## Important Design Decisions
 - Monorepo chosen to keep backend, mobile, and shared contracts synchronized.
@@ -156,6 +159,7 @@ sports-matchmaking/
 4. Implement payments.
 5. Add map UI for visual nearby discovery.
 6. Add advanced rating/dispute and moderation rules.
+7. Evolve ranking with availability windows, reliability/no-show signals, and learned recommendations.
 
 ## Local Development Commands
 From repo root:

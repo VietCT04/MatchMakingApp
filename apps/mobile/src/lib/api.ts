@@ -44,6 +44,7 @@ export type MatchFilters = {
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
+  ranked?: boolean;
 };
 
 export type SubmitMatchResultInput = {

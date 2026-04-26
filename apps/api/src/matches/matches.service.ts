@@ -8,6 +8,7 @@ import { MatchLifecycleService } from './match-lifecycle.service';
 import { MatchParticipationService } from './match-participation.service';
 import { MatchQueryService } from './match-query.service';
 import { MatchResultSubmissionService } from './match-result-submission.service';
+import { AuthUser } from '../auth/auth-user';
 
 @Injectable()
 export class MatchesService {
@@ -18,8 +19,8 @@ export class MatchesService {
     private readonly resultSubmissionService: MatchResultSubmissionService,
   ) {}
 
-  findAll(query: MatchQueryDto = {}) {
-    return this.queryService.findAll(query);
+  findAll(query: MatchQueryDto = {}, user?: AuthUser) {
+    return this.queryService.findAll(query, user?.id);
   }
 
   findOne(id: string) {
