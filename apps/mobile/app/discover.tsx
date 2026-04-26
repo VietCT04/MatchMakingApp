@@ -87,6 +87,9 @@ export default function DiscoverScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{token ? 'Best matches for you' : 'Open Matches'}</Text>
+      <Text style={styles.subtitle}>
+        {token ? 'Ranked by fit score for your profile and match preferences.' : 'Browse open matches and join a game.'}
+      </Text>
 
       <View style={styles.locationSection}>
         <Pressable style={styles.locationButton} onPress={handleUseMyLocation} disabled={locationLoading}>
@@ -151,23 +154,49 @@ export default function DiscoverScreen() {
 
       {matches.map((match) => {
         const players = match.participants?.filter((item) => item.status === 'JOINED').length ?? 0;
+        const ratingRange = `${match.minRating ?? 'Any'}-${match.maxRating ?? 'Any'}`;
         return (
           <Pressable
             key={match.id}
             style={styles.card}
             onPress={() => router.push({ pathname: '/match/[id]', params: { id: match.id } })}
           >
-            <Text style={styles.cardTitle}>{match.title}</Text>
-            <Text style={styles.line}>{match.sport?.name ?? match.sportId} at {match.venue?.name ?? 'Venue TBD'}</Text>
-            <Text style={styles.line}>{new Date(match.startsAt).toLocaleString()}</Text>
-            <Text style={styles.line}>{match.format} | {players}/{match.maxPlayers} players | {match.status}</Text>
-            <Text style={styles.line}>Rating {match.minRating ?? 'any'}-{match.maxRating ?? 'any'}</Text>
-            {typeof match.fitScore === 'number' ? (
-              <Text style={styles.fit}>{Math.round(match.fitScore)}% fit</Text>
-            ) : null}
-            {usingLocation && match.distanceKm !== undefined ? (
-              <Text style={styles.distance}>{match.distanceKm.toFixed(1)} km away</Text>
-            ) : null}
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{match.title}</Text>
+              <Text style={styles.statusPill}>{match.status}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Sport</Text>
+              <Text style={styles.metaValue}>{match.sport?.name ?? match.sportId}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Format</Text>
+              <Text style={styles.metaValue}>{match.format}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Venue</Text>
+              <Text style={styles.metaValue}>{match.venue?.name ?? 'Venue TBD'}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Date & time</Text>
+              <Text style={styles.metaValue}>{new Date(match.startsAt).toLocaleString()}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Rating range</Text>
+              <Text style={styles.metaValue}>{ratingRange}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Players</Text>
+              <Text style={styles.metaValue}>{players}/{match.maxPlayers}</Text>
+            </View>
+            <View style={styles.badgeRow}>
+              {typeof match.fitScore === 'number' ? (
+                <Text style={styles.fitBadge}>{Math.round(match.fitScore)}% fit</Text>
+              ) : null}
+              {usingLocation && match.distanceKm !== undefined ? (
+                <Text style={styles.distanceBadge}>{match.distanceKm.toFixed(1)} km away</Text>
+              ) : null}
+            </View>
           </Pressable>
         );
       })}
@@ -176,9 +205,10 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f8fa' },
-  content: { padding: 20, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: '#f4f6fb' },
+  content: { padding: 20, gap: 12, paddingBottom: 24 },
+  title: { fontSize: 28, fontWeight: '700', color: '#17263b' },
+  subtitle: { color: '#5f6d86' },
   locationSection: { gap: 8 },
   locationButton: {
     alignSelf: 'flex-start',
@@ -204,11 +234,38 @@ const styles = StyleSheet.create({
   filterActive: { backgroundColor: '#20304a', borderColor: '#20304a' },
   filterText: { color: '#20304a', textTransform: 'capitalize' },
   filterTextActive: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderColor: '#d0d8e6', borderRadius: 8, borderWidth: 1, padding: 14, gap: 4 },
-  cardTitle: { fontSize: 17, fontWeight: '700' },
-  line: { color: '#44516a' },
-  fit: { color: '#1f4ad3', fontWeight: '700' },
-  distance: { color: '#067647', fontWeight: '700' },
+  card: { backgroundColor: '#fff', borderColor: '#d0d8e6', borderRadius: 12, borderWidth: 1, padding: 14, gap: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: '#17263b', flex: 1 },
+  statusPill: {
+    fontSize: 12,
+    color: '#20304a',
+    backgroundColor: '#e7ecf7',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontWeight: '700',
+  },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  metaLabel: { color: '#66748e', fontSize: 13 },
+  metaValue: { color: '#20304a', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  fitBadge: {
+    color: '#1f4ad3',
+    fontWeight: '700',
+    backgroundColor: '#e9efff',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  distanceBadge: {
+    color: '#067647',
+    fontWeight: '700',
+    backgroundColor: '#e7f6ed',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
   messageBox: { gap: 8 },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },

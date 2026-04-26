@@ -108,6 +108,7 @@ sports-matchmaking/
 - Temporary demo-user/dummy match path has been removed from the normal app flow.
 - Discover screen now supports current-location filtering with a radius selector (3/5/10/20 km), and gracefully falls back to showing all open matches if permission is denied.
 - Discover now requests ranked results for authenticated users and shows `NN% fit` labels on match cards.
+- Mobile MVP UI is now demo-ready: home flow guidance, polished auth forms, clearer match cards, improved create-match form UX, grouped participants in match detail, clearer result verification messaging, grouped ratings display, and cleaner profile fallbacks.
 - Mock data still exists in `src/mock/data.ts`, but MVP screens should surface backend errors instead of silently relying on mocks.
 - TODO markers already exist for auth, chat, maps, push, and payment areas.
 
@@ -135,6 +136,8 @@ sports-matchmaking/
 - Error responses use Nest defaults (statusCode/message/error) for exceptions.
 - Detailed endpoint docs: [docs/API.md](./docs/API.md).
 - `GET /matches?ranked=true` returns `fitScore` and `fitBreakdown`, sorted by best fit (rule-based, not AI).
+- Backend tests currently include one intentionally skipped integration suite (`match-flow.integration.spec.ts`) when `DATABASE_URL` is not set in the test environment.
+- TS151002 ts-jest warning has been resolved by setting isolated module handling in Jest transform config.
 
 ## Important Design Decisions
 - Monorepo chosen to keep backend, mobile, and shared contracts synchronized.

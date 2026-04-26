@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { UserDto } from '@sports-matchmaking/shared';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../src/auth/AuthContext';
 import { useUserRatings } from '../src/hooks/useUserRatings';
+import { useSports } from '../src/hooks/useSports';
 
 export default function ProfileScreen() {
   const { user: authUser, authLoading, logout, refreshMe } = useAuth();
@@ -11,7 +12,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { data: ratingsData, loading: ratingsLoading, error: ratingsError, refresh: refreshRatings } = useUserRatings(Boolean(authUser));
-  const ratings = ratingsData.ratings;
+  const { data: sports } = useSports();
 
   useEffect(() => {
     async function loadProfile() {
@@ -32,7 +33,7 @@ export default function ProfileScreen() {
       }
     }
 
-    loadProfile();
+    void loadProfile();
   }, [authUser, refreshMe]);
 
   useFocusEffect(
@@ -43,30 +44,35 @@ export default function ProfileScreen() {
     }, [authUser, refreshRatings]),
   );
 
+  const sportNameById = useMemo(() => new Map(sports.map((sport) => [sport.id, sport.name])), [sports]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Player Profile</Text>
+      <Text style={styles.title}>Profile</Text>
       {!authLoading && !authUser ? <Text style={styles.error}>Login required to view your profile.</Text> : null}
       {loading ? <Text style={styles.muted}>Loading profile...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {user ? (
-        <View style={styles.section}>
-          <Text style={styles.heading}>{user.displayName}</Text>
-          <Text style={styles.line}>{user.email}</Text>
-          <Text style={styles.line}>{user.bio ?? 'No bio yet'}</Text>
-          <Text style={styles.line}>{user.homeLocationText ?? 'No home location yet'}</Text>
+        <View style={styles.card}>
+          <Text style={styles.heading}>{user.displayName || 'Player'}</Text>
+          <Text style={styles.label}>Email</Text>
+          <Text style={styles.value}>{user.email || 'No email available'}</Text>
+          <Text style={styles.label}>Bio</Text>
+          <Text style={styles.value}>{user.bio || 'No bio added yet.'}</Text>
+          <Text style={styles.label}>Home location</Text>
+          <Text style={styles.value}>{user.homeLocationText || 'No home location added yet.'}</Text>
         </View>
       ) : null}
 
-      <View style={styles.section}>
+      <View style={styles.card}>
         <Text style={styles.heading}>Ratings Summary</Text>
         {ratingsLoading ? <Text style={styles.muted}>Loading ratings summary...</Text> : null}
         {!ratingsLoading && ratingsError ? <Text style={styles.error}>{ratingsError}</Text> : null}
-        {!ratingsLoading && !ratingsError && ratings.length === 0 ? <Text style={styles.muted}>No ratings found.</Text> : null}
-        {ratings.slice(0, 6).map((rating) => (
-          <Text key={rating.id} style={styles.line}>
-            {rating.sportId} | {rating.format}: {rating.rating} ({rating.gamesPlayed} games)
+        {!ratingsLoading && !ratingsError && ratingsData.ratings.length === 0 ? <Text style={styles.muted}>No ratings yet.</Text> : null}
+        {ratingsData.ratings.slice(0, 6).map((rating) => (
+          <Text key={rating.id} style={styles.value}>
+            {(sportNameById.get(rating.sportId) ?? 'Unknown sport')} {rating.format === 'SINGLES' ? 'Singles' : 'Doubles'}: {rating.rating} ({rating.gamesPlayed} games)
           </Text>
         ))}
       </View>
@@ -76,20 +82,27 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </Pressable>
       ) : null}
-
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 20, gap: 14 },
-  title: { fontSize: 24, fontWeight: '700' },
-  section: { gap: 6 },
-  heading: { fontSize: 18, fontWeight: '700' },
-  line: { color: '#44516a' },
+  container: { flex: 1, backgroundColor: '#f4f6fb' },
+  content: { padding: 20, gap: 14, paddingBottom: 24 },
+  title: { fontSize: 28, fontWeight: '700', color: '#17263b' },
+  card: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d5deec',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  heading: { fontSize: 18, fontWeight: '700', color: '#20304a' },
+  label: { color: '#66748e', fontSize: 12 },
+  value: { color: '#44516a' },
   muted: { color: '#6f7b91' },
   error: { color: '#b42318' },
-  logoutButton: { backgroundColor: '#20304a', borderRadius: 8, padding: 14, alignItems: 'center' },
+  logoutButton: { backgroundColor: '#20304a', borderRadius: 10, padding: 14, alignItems: 'center' },
   logoutText: { color: '#fff', fontWeight: '700' },
 });

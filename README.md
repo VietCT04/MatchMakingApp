@@ -11,6 +11,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 
 ## Main Features (Current Scaffold)
 - Mobile screens for home, login/register, profile, discovery, create match, match details, and ratings
+- Polished demo-ready mobile UX across core screens (consistent cards/buttons, clearer copy, and stronger loading/error/empty/success states)
 - API client abstraction connected to the backend for mobile
 - NestJS REST API with modules for users, sports, matches, ratings, venues, JWT auth, and health
 - Prisma schema for key relational entities
@@ -172,6 +173,8 @@ pnpm typecheck
 ## Implemented MVP Mobile Flow
 - Stable authenticated flow now covers:
   - register/login -> discover open matches -> create match -> join/leave -> submit result -> verify result (different joined participant) -> rating update visible in ratings/profile -> logout
+- Home explains the full product loop and provides direct navigation to core flows.
+- Login/Register include clearer validation messaging and consistent CTA styling.
 - Match Discovery fetches open matches from the backend and supports simple sport filtering.
 - Match Discovery supports optional nearby mode:
   - "Use my location" permission flow
@@ -179,8 +182,10 @@ pnpm typecheck
   - distance labels on cards (for example `2.4 km away`)
   - denied permission fallback message while still showing all open matches
 - Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
-- Create Match fetches sports/venues and posts to `POST /matches`.
-- Match Detail supports join, leave, submit result, verify result, and refreshes data after actions.
+- Create Match has sectioned form UX (sport, venue, format, details, date/time, rating range), helper text, backend error display, submit disabling, and success feedback.
+- Match Detail now highlights participant grouping (Team A/B/Unknown), participation state, clearer action button visibility rules, and clearer pending/verified result messaging.
+- Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
+- Profile screen now has clean fallback text and a clearer ratings summary.
 - Login/Register use `/auth/login` and `/auth/register`.
 - Authenticated API calls attach `Authorization: Bearer <token>`.
 - Create, join, leave, submit result, and verify result derive user identity from JWT.
@@ -189,12 +194,11 @@ pnpm typecheck
 - Temporary demo-user normal flow has been removed from navigation and match detail behavior.
 
 ## Remaining TODOs
-- Better UI polish and richer UX states.
 - Full map UI and richer map-based nearby discovery.
 - Chat and push notifications.
 - Payments.
 - PostGIS/indexed geospatial querying for large-scale nearby search.
-- Advanced rating/dispute rules.
+- Advanced rating/dispute rules and moderation tooling.
 - Richer ranking signals (availability windows, reliability/no-show history, and learned recommendations).
 
 ## Auth Quick Test

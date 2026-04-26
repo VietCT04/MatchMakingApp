@@ -3,10 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../src/auth/AuthContext';
 
 const links = [
-  { href: '/profile', label: 'Player Profile' },
-  { href: '/discover', label: 'Match Discovery' },
-  { href: '/create-match', label: 'Create Match' },
-  { href: '/ratings', label: 'Ratings' },
+  { href: '/discover', label: 'Discover matches' },
+  { href: '/create-match', label: 'Create match' },
+  { href: '/ratings', label: 'View ratings' },
+  { href: '/profile', label: 'Profile' },
 ] as const;
 
 export default function HomeScreen() {
@@ -14,8 +14,22 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sports Matchmaking MVP</Text>
-      <Text style={styles.subtitle}>{authLoading ? 'Loading session...' : user ? `Signed in as ${user.displayName}` : 'Sign in to create, join, and score matches.'}</Text>
+      <Text style={styles.title}>Sports Matchmaking</Text>
+      <Text style={styles.subtitle}>
+        {authLoading
+          ? 'Loading session...'
+          : user
+            ? `Signed in as ${user.displayName}`
+            : 'Sign in to discover, play, and improve your rating.'}
+      </Text>
+      <View style={styles.flowCard}>
+        <Text style={styles.flowTitle}>How It Works</Text>
+        <Text style={styles.flowItem}>1. Find nearby ranked matches</Text>
+        <Text style={styles.flowItem}>2. Create a match</Text>
+        <Text style={styles.flowItem}>3. Play and submit score</Text>
+        <Text style={styles.flowItem}>4. Verify result</Text>
+        <Text style={styles.flowItem}>5. Improve your rating</Text>
+      </View>
       {!authLoading && !user ? (
         <>
           <Link href="/login" style={styles.link}>Login</Link>
@@ -39,32 +53,49 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f8fa',
+    backgroundColor: '#f4f6fb',
     paddingHorizontal: 20,
     paddingTop: 32,
-    gap: 12,
+    gap: 14,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
+    color: '#17263b',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#566074',
-    marginBottom: 8,
+  },
+  flowCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d6deec',
+    borderRadius: 12,
+    padding: 14,
+    gap: 6,
+  },
+  flowTitle: {
+    fontWeight: '700',
+    color: '#20304a',
+    marginBottom: 2,
+  },
+  flowItem: {
+    color: '#44516a',
   },
   link: {
     backgroundColor: '#ffffff',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
     fontSize: 16,
     color: '#1f4ad3',
     borderWidth: 1,
-    borderColor: '#d9dfee',
+    borderColor: '#d6deec',
+    fontWeight: '600',
   },
   logout: {
     backgroundColor: '#20304a',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
   },
   logoutText: {
