@@ -30,6 +30,7 @@ Response:
   "user": {
     "id": "uuid",
     "email": "demo@sports.app",
+    "role": "USER",
     "displayName": "Demo Player"
   }
 }
@@ -52,6 +53,7 @@ Response:
   "user": {
     "id": "uuid",
     "email": "demo@sports.app",
+    "role": "USER",
     "displayName": "Demo Player"
   }
 }
@@ -91,6 +93,7 @@ Example response:
 {
   "id": "uuid",
   "email": "player1@example.com",
+  "role": "USER",
   "displayName": "Player One",
   "bio": "Loves doubles",
   "homeLocationText": "Singapore",
@@ -418,6 +421,68 @@ Rules:
 - if `matchId` is provided, reporter must be a participant in that match
 - creates report with `OPEN` status
 - increments reported-user reliability report count
+
+## Moderation Endpoints
+All moderation endpoints require `Authorization: Bearer <token>` and role `MODERATOR` or `ADMIN`.
+
+### `GET /moderation/reports`
+Query:
+- `status` optional (`OPEN`, `REVIEWED`, `DISMISSED`)
+- `limit` optional (default 50)
+
+### `PATCH /moderation/reports/:id`
+Request:
+```json
+{
+  "status": "REVIEWED",
+  "moderatorNote": "Reviewed and confirmed"
+}
+```
+
+Rules:
+- valid transitions: `OPEN -> REVIEWED|DISMISSED`
+- saves moderation reviewer fields
+- creates moderation audit log row
+- `DISMISSED` decrements reported user's `reportCount` (min 0) and recalculates reliability
+
+### `GET /moderation/disputes`
+Query:
+- `status` optional (`OPEN`, `RESOLVED`, `REJECTED`)
+- `limit` optional (default 50)
+
+### `PATCH /moderation/disputes/:id`
+Request:
+```json
+{
+  "status": "REJECTED",
+  "moderatorNote": "Insufficient evidence"
+}
+```
+
+Rules:
+- valid transitions: `OPEN -> RESOLVED|REJECTED`
+- saves moderation reviewer fields
+- creates moderation audit log row
+- `REJECTED` decrements dispute creator `disputedResults` (min 0) and recalculates reliability
+- TODO: future score correction and Elo rollback/recalculation
+
+### `GET /moderation/no-shows`
+Returns current `NO_SHOW` participant records with match/user context.
+
+### `PATCH /moderation/no-shows/:participantId`
+Request:
+```json
+{
+  "action": "REVERSE",
+  "moderatorNote": "Player provided valid reason"
+}
+```
+
+Rules:
+- only for participants currently in `NO_SHOW` state
+- `CONFIRM` keeps status and writes audit row
+- `REVERSE` sets status back to `JOINED`, decrements `noShowCount` (min 0), recalculates reliability
+- creates moderation audit log row
 
 ## Notifications Endpoints
 ### `GET /notifications`

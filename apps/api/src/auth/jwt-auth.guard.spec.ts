@@ -53,6 +53,7 @@ describe('JwtAuthGuard', () => {
     const token = jwtService.sign({
       sub: 'user-1',
       email: 'user@example.com',
+      role: 'USER',
       displayName: 'User One',
     });
 
@@ -64,6 +65,7 @@ describe('JwtAuthGuard', () => {
         expect(body).toEqual({
           id: 'user-1',
           email: 'user@example.com',
+          role: 'USER',
           displayName: 'User One',
         });
       });

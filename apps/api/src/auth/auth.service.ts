@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,6 +52,7 @@ export class AuthService {
       select: {
         id: true,
         email: true,
+        role: true,
         displayName: true,
         bio: true,
         homeLocationText: true,
@@ -64,6 +66,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
       displayName: user.displayName,
     };
 
@@ -73,10 +76,11 @@ export class AuthService {
     };
   }
 
-  private toAuthUser(user: { id: string; email: string; displayName: string }): AuthUser {
+  private toAuthUser(user: { id: string; email: string; role: UserRole; displayName: string }): AuthUser {
     return {
       id: user.id,
       email: user.email,
+      role: user.role,
       displayName: user.displayName,
     };
   }

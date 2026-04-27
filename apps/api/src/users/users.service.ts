@@ -51,6 +51,7 @@ export class UsersService {
     return {
       id: true,
       email: true,
+      role: true,
       displayName: true,
       bio: true,
       homeLocationText: true,

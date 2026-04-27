@@ -59,6 +59,13 @@ sports-matchmaking/
   - `POST /matches/:id/results/:resultId/disputes`
 - Reports endpoint:
   - `POST /reports/users`
+- Moderation endpoints (MODERATOR/ADMIN only):
+  - `GET /moderation/reports`
+  - `PATCH /moderation/reports/:id`
+  - `GET /moderation/disputes`
+  - `PATCH /moderation/disputes/:id`
+  - `GET /moderation/no-shows`
+  - `PATCH /moderation/no-shows/:participantId`
 - Chat endpoints:
   - `GET /matches/:id/chat/messages`
   - `POST /matches/:id/chat/messages`
@@ -107,6 +114,7 @@ sports-matchmaking/
   - Match chat
   - Notifications
   - Notification settings
+  - Moderation (role-gated)
   - Rating
 - Mobile API client in `apps/mobile/src/lib/api.ts` calls the backend through centralized config.
 
@@ -119,6 +127,7 @@ sports-matchmaking/
 - PostGIS is required for production nearby geospatial filtering performance.
 - Payment logic.
 - Admin/moderation dashboard and dispute-resolution workflow.
+- Rich moderation dashboard analytics and advanced tooling (current moderation UI is intentionally lightweight).
 
 ## Backend Notes
 - Controllers currently delegate to services and should remain thin.
@@ -211,6 +220,9 @@ sports-matchmaking/
 - Invalid Expo tokens are deactivated when Expo returns `DeviceNotRegistered`.
 - Push delivery respects backend notification preferences (`matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`).
 - Push delivery also respects quiet hours and per-match mute preferences.
+- User role model is implemented (`USER`, `MODERATOR`, `ADMIN`) and moderation endpoints are protected by role guard.
+- Moderation outcomes are audited in `ModerationAction`.
+- Moderation review can correct reliability penalties for dismissed reports, rejected disputes, and reversed no-shows.
 - Per-match mute affects push delivery only; in-app notifications remain visible and queryable.
 - Current fit weights:
   - distance 30%
@@ -232,7 +244,7 @@ sports-matchmaking/
 ## Known Limitations
 - Passwords are stored as bcrypt hashes; plaintext passwords are not stored.
 - Protected match write endpoints derive user identity from JWT.
-- No role-based access control.
+- No dedicated external admin web app yet (moderation currently handled through API + lightweight mobile screen).
 - No rate limiting or abuse protection yet.
 - Verified result flow automatically updates ratings and writes rating history.
 - Database-backed backend integration coverage exists for the MVP match flow.
@@ -244,7 +256,7 @@ sports-matchmaking/
 3. Add websocket realtime chat/notification delivery using existing notification events.
 4. Add push receipt analytics and delivery diagnostics UX.
 5. Implement payments.
-6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
+6. Expand moderation tooling (filters, search, richer context, and operator productivity UX).
 7. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.
 
 ## Local Development Commands

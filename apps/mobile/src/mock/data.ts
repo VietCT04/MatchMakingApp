@@ -3,6 +3,7 @@ import {
   MatchParticipantStatus,
   SportFormat,
   Team,
+  UserRole,
   type MatchDto,
   type MatchWithDetailsDto,
   type RatingDto,
@@ -16,6 +17,7 @@ const now = new Date().toISOString();
 export const mockUser: UserDto = {
   id: 'mock-user-1',
   email: 'demo@sports.app',
+  role: UserRole.USER,
   displayName: 'Demo Player',
   bio: 'Weekend doubles enthusiast',
   homeLocationText: 'Singapore',

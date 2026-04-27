@@ -34,6 +34,7 @@ apps/mobile/app/
     ratings.tsx
     profile.tsx
   map.tsx
+  moderation.tsx
   notification-settings.tsx
   match/[id].tsx
   match-chat/[id].tsx
@@ -48,6 +49,7 @@ apps/mobile/app/
 - Surface loading/error/empty states when backend data is unavailable.
 - Keep shared visual primitives in `apps/mobile/src/components` to reduce style duplication.
 - Keep authenticated shell navigation in Expo Router tabs for Discover/Create/Notifications/Ratings/Profile.
+- Expose moderation route outside tabs and gate access by authenticated user role (`ADMIN`/`MODERATOR`).
 
 ## Backend Responsibility
 - Expose REST endpoints.
@@ -61,6 +63,8 @@ apps/mobile/app/
 - In-app notifications are implemented as database-backed events in `NotificationsService` with per-user read/unread state.
 - Expo push notifications are a delivery channel driven by `NotificationsService` + `PushService`.
 - Push delivery applies layered controls: category preference -> quiet hours -> per-match mute.
+- Moderation workflows run in a dedicated `ModerationService` and are protected by `JwtAuthGuard + RolesGuard`.
+- Moderation outcomes write `ModerationAction` audit rows and can adjust reliability penalties.
 
 ## Shared Package Responsibility
 - Centralize reusable enums and DTO interfaces:
@@ -78,6 +82,7 @@ apps/mobile/app/
 ## Database Responsibility
 - Store durable records for users, sports, ratings, venues, matches, participants, results, rating history, reliability stats, disputes, reports, chat messages, notifications, push devices, and notification preferences.
 - Store per-user match mute preferences and chat read-state (`MatchNotificationPreference`, `ChatReadState`) for notification/chat UX controls.
+- Store moderation audit events in `ModerationAction`.
 - Enforce relational consistency via foreign keys and unique constraints.
 - Power nearby geospatial discovery with PostGIS extension + spatial expression index on venue coordinates.
 
@@ -121,7 +126,7 @@ apps/mobile/app/
 - Payment
   - Add payment service abstraction and secure webhook handling.
 - Admin dashboard
-  - Add separate web/admin app for moderation, disputes, and operational controls.
+  - Add separate web/admin app for richer moderation, disputes, and operational controls.
 
 ## Related Docs
 - [API](./API.md)

@@ -1,8 +1,9 @@
+import { UserRole } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
 import { MatchesController } from './matches.controller';
 
 describe('MatchesController auth identity handling', () => {
-  const authUser = { id: 'jwt-user', email: 'jwt@example.com', displayName: 'JWT User' };
+  const authUser = { id: 'jwt-user', email: 'jwt@example.com', role: UserRole.USER, displayName: 'JWT User' };
 
   function createController() {
     const matchesService = {

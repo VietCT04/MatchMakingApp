@@ -43,6 +43,21 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ModerationActionType {
+  REPORT_REVIEWED
+  REPORT_DISMISSED
+  DISPUTE_RESOLVED
+  DISPUTE_REJECTED
+  NO_SHOW_CONFIRMED
+  NO_SHOW_REVERSED
+}
+
 enum NotificationType {
   MATCH_JOINED
   MATCH_LEFT
@@ -68,6 +83,7 @@ model User {
   id               String            @id @default(uuid())
   email            String            @unique
   passwordHash     String?
+  role             UserRole          @default(USER)
   displayName      String
   bio              String?
   homeLocationText String?
@@ -83,12 +99,15 @@ model User {
   createdDisputes  MatchResultDispute[] @relation("DisputeCreatedBy")
   reportsFiled     UserReport[] @relation("ReportBy")
   reportsReceived  UserReport[] @relation("ReportedUser")
+  reviewedReports  UserReport[] @relation("ReportReviewedBy")
+  reviewedDisputes MatchResultDispute[] @relation("DisputeReviewedBy")
   sentChatMessages ChatMessage[] @relation("ChatMessageSender")
   notifications    Notification[]
   pushDevices      PushDevice[]
   notificationPreference NotificationPreference?
   matchNotificationPreferences MatchNotificationPreference[]
   chatReadStates ChatReadState[]
+  moderationActions ModerationAction[] @relation("ModerationBy")
 }
 
 model Sport {
@@ -158,6 +177,7 @@ model Match {
   chatMessages    ChatMessage[]
   matchNotificationPreferences MatchNotificationPreference[]
   chatReadStates ChatReadState[]
+  moderationActions ModerationAction[]
 
   @@index([sportId, status, startsAt])
   @@index([venueId, startsAt])
@@ -273,6 +293,7 @@ model MatchParticipant {
 
   match     Match                  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderationActions ModerationAction[]
 
   @@unique([matchId, userId])
 }
@@ -332,12 +353,17 @@ model MatchResultDispute {
   createdByUserId String
   reason          String
   status          DisputeStatus @default(OPEN)
+  reviewedByUserId String?
+  reviewedAt      DateTime?
+  moderatorNote   String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   matchResult     MatchResult  @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
   match           Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
   createdByUser   User         @relation("DisputeCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  reviewedByUser  User?        @relation("DisputeReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  moderationActions ModerationAction[]
 
   @@unique([matchResultId, createdByUserId])
   @@index([matchId, status])
@@ -350,13 +376,40 @@ model UserReport {
   matchId        String?
   reason         String
   status         ReportStatus @default(OPEN)
+  reviewedByUserId String?
+  reviewedAt     DateTime?
+  moderatorNote  String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   reportedUser   User        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
   reporterUser   User        @relation("ReportBy", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  reviewedByUser User?       @relation("ReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   match          Match?      @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  moderationActions ModerationAction[]
 
   @@index([reportedUserId, status])
   @@index([reporterUserId, createdAt])
+}
+
+model ModerationAction {
+  id              String               @id @default(uuid())
+  moderatorUserId String
+  targetUserId    String?
+  reportId        String?
+  disputeId       String?
+  matchId         String?
+  participantId   String?
+  actionType      ModerationActionType
+  note            String?
+  createdAt       DateTime             @default(now())
+
+  moderatorUser   User                 @relation("ModerationBy", fields: [moderatorUserId], references: [id], onDelete: Cascade)
+  report          UserReport?          @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  dispute         MatchResultDispute?  @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+  match           Match?               @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  participant     MatchParticipant?    @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([moderatorUserId, createdAt])
+  @@index([targetUserId, createdAt])
 }

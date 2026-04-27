@@ -12,6 +12,7 @@ describe('AuthService', () => {
           Promise.resolve({
             id: 'user-1',
             email: data.email,
+            role: data.role ?? 'USER',
             displayName: data.displayName,
             passwordHash: data.passwordHash,
           }),
@@ -57,6 +58,7 @@ describe('AuthService', () => {
     const { service } = createService({
       id: 'user-1',
       email: 'login@example.com',
+      role: 'USER',
       displayName: 'Login User',
       passwordHash,
     });
@@ -72,6 +74,7 @@ describe('AuthService', () => {
     const { service } = createService({
       id: 'user-1',
       email: 'login@example.com',
+      role: 'USER',
       displayName: 'Login User',
       passwordHash,
     });

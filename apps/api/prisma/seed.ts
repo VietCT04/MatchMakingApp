@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient, SportFormat, MatchStatus, Team, MatchParticipantStatus } from '@prisma/client';
+import { PrismaClient, SportFormat, MatchStatus, Team, MatchParticipantStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -11,6 +11,7 @@ const demoUsers = [
     displayName: 'Alex Tan',
     bio: 'Badminton doubles regular',
     homeLocationText: 'Central',
+    role: UserRole.ADMIN,
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
@@ -18,6 +19,7 @@ const demoUsers = [
     displayName: 'Maya Lee',
     bio: 'Pickleball beginner',
     homeLocationText: 'East',
+    role: UserRole.MODERATOR,
   },
   {
     id: '33333333-3333-4333-8333-333333333333',
@@ -25,6 +27,7 @@ const demoUsers = [
     displayName: 'Sam Wong',
     bio: 'Tennis singles player',
     homeLocationText: 'West',
+    role: UserRole.USER,
   },
   {
     id: '44444444-4444-4444-8444-444444444444',
@@ -32,6 +35,7 @@ const demoUsers = [
     displayName: 'Nina Koh',
     bio: 'Flexible racket sports partner',
     homeLocationText: 'North',
+    role: UserRole.USER,
   },
 ];
 
@@ -91,6 +95,7 @@ async function main(): Promise<void> {
           displayName: user.displayName,
           bio: user.bio,
           homeLocationText: user.homeLocationText,
+          role: user.role,
           passwordHash,
         },
         create: { ...user, passwordHash },

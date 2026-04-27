@@ -68,6 +68,18 @@ export class ReliabilityService {
     return this.applyDeltas(userId, { reportCount: 1 }, tx);
   }
 
+  async decrementReports(userId: string, tx?: Prisma.TransactionClient) {
+    return this.applyDeltas(userId, { reportCount: -1 }, tx);
+  }
+
+  async decrementDisputedResults(userId: string, tx?: Prisma.TransactionClient) {
+    return this.applyDeltas(userId, { disputedResults: -1 }, tx);
+  }
+
+  async decrementNoShow(userId: string, tx?: Prisma.TransactionClient) {
+    return this.applyDeltas(userId, { noShowCount: -1 }, tx);
+  }
+
   async toSummaryByUserId(userId: string, tx?: Prisma.TransactionClient) {
     const stats = await this.getOrCreateByUserId(userId, tx);
     return this.toSummary(stats);
@@ -79,12 +91,12 @@ export class ReliabilityService {
     const current = await client.userReliabilityStats.findUniqueOrThrow({ where: { userId } });
 
     const nextCounts = {
-      completedMatches: current.completedMatches + (deltas.completedMatches ?? 0),
-      cancelledMatches: current.cancelledMatches + (deltas.cancelledMatches ?? 0),
-      lateCancellationCount: current.lateCancellationCount + (deltas.lateCancellationCount ?? 0),
-      noShowCount: current.noShowCount + (deltas.noShowCount ?? 0),
-      disputedResults: current.disputedResults + (deltas.disputedResults ?? 0),
-      reportCount: current.reportCount + (deltas.reportCount ?? 0),
+      completedMatches: Math.max(0, current.completedMatches + (deltas.completedMatches ?? 0)),
+      cancelledMatches: Math.max(0, current.cancelledMatches + (deltas.cancelledMatches ?? 0)),
+      lateCancellationCount: Math.max(0, current.lateCancellationCount + (deltas.lateCancellationCount ?? 0)),
+      noShowCount: Math.max(0, current.noShowCount + (deltas.noShowCount ?? 0)),
+      disputedResults: Math.max(0, current.disputedResults + (deltas.disputedResults ?? 0)),
+      reportCount: Math.max(0, current.reportCount + (deltas.reportCount ?? 0)),
     };
 
     return client.userReliabilityStats.update({

@@ -12,6 +12,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PushModule } from './push/push.module';
+import { ModerationModule } from './moderation/moderation.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PushModule } from './push/push.module';
     ChatModule,
     PushModule,
     NotificationsModule,
+    ModerationModule,
   ],
 })
 export class AppModule {}

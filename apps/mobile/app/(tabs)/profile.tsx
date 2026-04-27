@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { ReliabilityStatsDto, UserDto } from '@sports-matchmaking/shared';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '../../src/auth/AuthContext';
 import { useUserRatings } from '../../src/hooks/useUserRatings';
 import { useSports } from '../../src/hooks/useSports';
@@ -17,6 +17,7 @@ import { EmptyState } from '../../src/components/states/EmptyState';
 
 export default function ProfileScreen() {
   const { user: authUser, authLoading, logout, refreshMe } = useAuth();
+  const router = useRouter();
   const [user, setUser] = useState<UserDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -130,6 +131,12 @@ export default function ProfileScreen() {
           </Text>
         ))}
       </AppCard>
+
+      {authUser?.role === 'ADMIN' || authUser?.role === 'MODERATOR' ? (
+        <AppButton variant="secondary" onPress={() => router.push('/moderation')}>
+          Moderation
+        </AppButton>
+      ) : null}
 
       {authUser ? <AppButton variant="secondary" onPress={logout}>Logout</AppButton> : null}
     </Screen>

@@ -34,6 +34,21 @@ export enum ReportStatus {
   DISMISSED = 'DISMISSED',
 }
 
+export enum UserRole {
+  USER = 'USER',
+  MODERATOR = 'MODERATOR',
+  ADMIN = 'ADMIN',
+}
+
+export enum ModerationActionType {
+  REPORT_REVIEWED = 'REPORT_REVIEWED',
+  REPORT_DISMISSED = 'REPORT_DISMISSED',
+  DISPUTE_RESOLVED = 'DISPUTE_RESOLVED',
+  DISPUTE_REJECTED = 'DISPUTE_REJECTED',
+  NO_SHOW_CONFIRMED = 'NO_SHOW_CONFIRMED',
+  NO_SHOW_REVERSED = 'NO_SHOW_REVERSED',
+}
+
 export enum NotificationType {
   MATCH_JOINED = 'MATCH_JOINED',
   MATCH_LEFT = 'MATCH_LEFT',
@@ -58,6 +73,7 @@ export enum PushDevicePlatform {
 export interface UserDto {
   id: string;
   email: string;
+  role: UserRole;
   displayName: string;
   bio: string | null;
   homeLocationText: string | null;
@@ -156,6 +172,9 @@ export interface MatchResultDisputeDto {
   createdByUserId: string;
   reason: string;
   status: DisputeStatus;
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+  moderatorNote?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -167,8 +186,24 @@ export interface UserReportDto {
   matchId: string | null;
   reason: string;
   status: ReportStatus;
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+  moderatorNote?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ModerationActionDto {
+  id: string;
+  moderatorUserId: string;
+  targetUserId: string | null;
+  reportId: string | null;
+  disputeId: string | null;
+  matchId: string | null;
+  participantId: string | null;
+  actionType: ModerationActionType;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface ChatMessageSenderDto {

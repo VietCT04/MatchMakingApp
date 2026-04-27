@@ -2,12 +2,14 @@ import type {
   ChatMessageDto,
   ChatUnreadCountDto,
   CreateMatchInput,
+  DisputeStatus,
   MatchNotificationPreferenceDto,
   MatchDto,
   MatchParticipantDto,
   MatchResultDisputeDto,
   MatchResultDto,
   MatchWithDetailsDto,
+  ReportStatus,
   NotificationPreferenceDto,
   NotificationDto,
   NotificationUnreadCountDto,
@@ -88,6 +90,20 @@ export type RegisterPushDeviceInput = {
   expoPushToken: string;
   platform?: PushDevicePlatform;
   deviceName?: string;
+};
+
+export type ModerationReportsParams = {
+  status?: ReportStatus;
+  limit?: number;
+};
+
+export type ModerationDisputesParams = {
+  status?: DisputeStatus;
+  limit?: number;
+};
+
+export type ModerationNoShowsParams = {
+  limit?: number;
 };
 
 type RequestOptions = {
@@ -449,9 +465,72 @@ export const apiClient = {
   getUserReliability(userId: string): Promise<ReliabilityStatsDto> {
     return request(`/users/${userId}/reliability`);
   },
+
+  getModerationReports(params: ModerationReportsParams = {}): Promise<UserReportDto[]> {
+    const query = new URLSearchParams();
+    if (params.status) {
+      query.set('status', params.status);
+    }
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    const suffix = query.toString();
+    return request(`/moderation/reports${suffix ? `?${suffix}` : ''}`);
+  },
+
+  getModerationDisputes(params: ModerationDisputesParams = {}): Promise<MatchResultDisputeDto[]> {
+    const query = new URLSearchParams();
+    if (params.status) {
+      query.set('status', params.status);
+    }
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    const suffix = query.toString();
+    return request(`/moderation/disputes${suffix ? `?${suffix}` : ''}`);
+  },
+
+  getModerationNoShows(params: ModerationNoShowsParams = {}): Promise<MatchParticipantDto[]> {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    const suffix = query.toString();
+    return request(`/moderation/no-shows${suffix ? `?${suffix}` : ''}`);
+  },
+
+  updateModerationReport(
+    reportId: string,
+    payload: { status: ReportStatus.REVIEWED | ReportStatus.DISMISSED; moderatorNote?: string },
+  ): Promise<UserReportDto> {
+    return request(`/moderation/reports/${reportId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateModerationDispute(
+    disputeId: string,
+    payload: { status: DisputeStatus.RESOLVED | DisputeStatus.REJECTED; moderatorNote?: string },
+  ): Promise<MatchResultDisputeDto> {
+    return request(`/moderation/disputes/${disputeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateModerationNoShow(
+    participantId: string,
+    payload: { action: 'CONFIRM' | 'REVERSE'; moderatorNote?: string },
+  ): Promise<MatchParticipantDto> {
+    return request(`/moderation/no-shows/${participantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 export type AuthResponse = {
   accessToken: string;
-  user: Pick<UserDto, 'id' | 'email' | 'displayName'>;
+  user: Pick<UserDto, 'id' | 'email' | 'role' | 'displayName'>;
 };

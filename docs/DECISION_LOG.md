@@ -1,5 +1,36 @@
 # Decision Log
 
+## 2026-04-27: Admin/moderation workflow MVP with auditable reliability correction
+
+Decision:
+- Add user roles on `User`:
+  - `USER` (default)
+  - `MODERATOR`
+  - `ADMIN`
+- Protect moderation APIs with role guard (`JwtAuthGuard + RolesGuard`).
+- Add moderation APIs for operator workflows:
+  - reports queue + resolution
+  - disputes queue + resolution
+  - no-show review + reversal
+- Add moderation review metadata on reports/disputes (`reviewedByUserId`, `reviewedAt`, `moderatorNote`).
+- Add `ModerationAction` audit model for immutable operator action tracking.
+- Allow moderation outcomes to correct previously applied reliability penalties:
+  - dismissed report => decrement `reportCount` and recalc reliability
+  - rejected dispute => decrement `disputedResults` and recalc reliability
+  - reversed no-show => decrement `noShowCount` and recalc reliability
+- Keep Elo untouched by moderation in MVP.
+
+Reasoning:
+- Trust/safety signals were already captured but lacked correction workflows.
+- Role-gated moderation APIs provide controlled operator access without building a separate admin app yet.
+- Audit trails are required for accountability and future compliance needs.
+- Reliability correction improves fairness when reports/disputes/no-shows are overturned.
+
+Follow-up:
+- Add richer moderation dashboard (filters, search, evidence context, queue assignment).
+- Add dispute score-correction workflow with Elo rollback/recalculation.
+- Expand permission system to fine-grained scopes beyond three coarse roles.
+
 ## 2026-04-27: Notification controls MVP (per-match mute, quiet hours, chat unread)
 
 Decision:
