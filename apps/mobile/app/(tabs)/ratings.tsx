@@ -11,6 +11,10 @@ type RatingHistoryWithMatch = {
   oldRating: number;
   newRating: number;
   delta: number;
+  correctionOfRatingHistoryId?: string | null;
+  isReverted?: boolean;
+  revertedAt?: string | null;
+  revertReason?: string | null;
   createdAt: string;
   matchId: string;
   match?: { title?: string } | null;
@@ -91,12 +95,15 @@ export default function RatingsScreen() {
         return (
           <View key={item.id} style={styles.card}>
             <Text style={styles.cardTitle}>{matchTitle}</Text>
+            {item.isReverted ? <Text style={styles.statusReverted}>Reverted</Text> : null}
+            {!item.isReverted && item.correctionOfRatingHistoryId ? <Text style={styles.statusCorrection}>Correction</Text> : null}
             <Text style={styles.line}>
               {item.oldRating} {'->'} {item.newRating}
             </Text>
             <Text style={[styles.delta, item.delta >= 0 ? styles.deltaUp : styles.deltaDown]}>
               {item.delta >= 0 ? '+' : ''}{item.delta}
             </Text>
+            {item.revertReason ? <Text style={styles.meta}>{item.revertReason}</Text> : null}
             <Text style={styles.line}>{new Date(item.createdAt).toLocaleString()}</Text>
           </View>
         );
@@ -139,5 +146,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   retryText: { color: '#1f4ad3', fontWeight: '700' },
+  statusReverted: { color: '#b42318', fontWeight: '700' },
+  statusCorrection: { color: '#1f4ad3', fontWeight: '700' },
+  meta: { color: '#66748e', fontSize: 12 },
 });
 

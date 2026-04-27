@@ -93,6 +93,7 @@ model User {
   createdMatches   Match[]           @relation("MatchCreatedBy")
   participations   MatchParticipant[]
   submittedResults MatchResult[]     @relation("ResultSubmittedBy")
+  correctedResults MatchResult[]     @relation("ResultCorrectedBy")
   ratings          UserSportRating[]
   ratingHistory    RatingHistory[]
   reliabilityStats UserReliabilityStats?
@@ -305,11 +306,18 @@ model MatchResult {
   teamAScore        Int
   teamBScore        Int
   verified          Boolean  @default(false)
+  correctedTeamAScore Int?
+  correctedTeamBScore Int?
+  correctedByUserId String?
+  correctedAt      DateTime?
+  correctionReason String?
+  isCorrected      Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   submittedByUser   User     @relation("ResultSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  correctedByUser   User?    @relation("ResultCorrectedBy", fields: [correctedByUserId], references: [id], onDelete: SetNull)
   disputes          MatchResultDispute[]
 }
 
@@ -321,6 +329,10 @@ model RatingHistory {
   oldRating Int
   newRating Int
   delta     Int
+  correctionOfRatingHistoryId String?
+  isReverted Boolean @default(false)
+  revertedAt DateTime?
+  revertReason String?
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -328,6 +340,7 @@ model RatingHistory {
   match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@index([userId, sportId, createdAt])
+  @@index([matchId, createdAt])
 }
 
 model UserReliabilityStats {
@@ -402,6 +415,7 @@ model ModerationAction {
   participantId   String?
   actionType      ModerationActionType
   note            String?
+  metadata        Json?
   createdAt       DateTime             @default(now())
 
   moderatorUser   User                 @relation("ModerationBy", fields: [moderatorUserId], references: [id], onDelete: Cascade)

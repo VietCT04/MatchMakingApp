@@ -134,6 +134,12 @@ export interface MatchResultDto {
   teamAScore: number;
   teamBScore: number;
   verified: boolean;
+  correctedTeamAScore?: number | null;
+  correctedTeamBScore?: number | null;
+  correctedByUserId?: string | null;
+  correctedAt?: string | null;
+  correctionReason?: string | null;
+  isCorrected?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -203,6 +209,7 @@ export interface ModerationActionDto {
   participantId: string | null;
   actionType: ModerationActionType;
   note: string | null;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -298,6 +305,10 @@ export interface RatingHistoryDto {
   oldRating: number;
   newRating: number;
   delta: number;
+  correctionOfRatingHistoryId?: string | null;
+  isReverted?: boolean;
+  revertedAt?: string | null;
+  revertReason?: string | null;
   createdAt: string;
 }
 

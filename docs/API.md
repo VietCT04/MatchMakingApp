@@ -70,6 +70,11 @@ Requires `Authorization: Bearer <token>`.
 
 ### `GET /me/rating-history`
 Requires `Authorization: Bearer <token>`.
+Returns rating history rows including correction metadata:
+- `correctionOfRatingHistoryId`
+- `isReverted`
+- `revertedAt`
+- `revertReason`
 
 ## Users Endpoints
 ### `GET /users`
@@ -454,8 +459,10 @@ Query:
 Request:
 ```json
 {
-  "status": "REJECTED",
-  "moderatorNote": "Insufficient evidence"
+  "status": "RESOLVED",
+  "moderatorNote": "Score was entered incorrectly",
+  "correctedTeamAScore": 17,
+  "correctedTeamBScore": 21
 }
 ```
 
@@ -464,7 +471,17 @@ Rules:
 - saves moderation reviewer fields
 - creates moderation audit log row
 - `REJECTED` decrements dispute creator `disputedResults` (min 0) and recalculates reliability
-- TODO: future score correction and Elo rollback/recalculation
+- when `RESOLVED` with corrected scores:
+  - verified match result is marked corrected
+  - original `RatingHistory` rows for the match are marked reverted
+  - affected users are rolled back to original pre-match ratings
+  - corrected Elo is applied for that disputed match only
+  - new correction `RatingHistory` rows are appended (audit-preserving)
+- correction is rejected if:
+  - result is not verified
+  - result was already corrected
+  - no rating history exists for that match
+- MVP limitation: full chronological replay for later matches is future work
 
 ### `GET /moderation/no-shows`
 Returns current `NO_SHOW` participant records with match/user context.

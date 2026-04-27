@@ -29,19 +29,25 @@ describe('ModerationService', () => {
       decrementDisputedResults: jest.fn(),
       decrementNoShow: jest.fn(),
     };
+    const ratingCorrectionService = {
+      applyDisputeRatingCorrection: jest.fn(),
+    };
 
     const notificationsService = {
       createNotification: jest.fn(),
+      createManyNotifications: jest.fn(),
     };
 
     return {
       tx,
       prisma,
       reliabilityService,
+      ratingCorrectionService,
       notificationsService,
       service: new ModerationService(
         prisma as any,
         reliabilityService as any,
+        ratingCorrectionService as any,
         notificationsService as any,
       ),
     };
@@ -76,25 +82,143 @@ describe('ModerationService', () => {
   });
 
   it('rejected dispute decrements disputed results and creates audit row', async () => {
-    const { service, prisma, tx, reliabilityService } = createService();
+    const { service, prisma, tx, reliabilityService, ratingCorrectionService } = createService();
     prisma.matchResultDispute.findUnique.mockResolvedValue({
       id: 'dispute-1',
       status: DisputeStatus.OPEN,
       createdByUserId: 'user-1',
       matchId: 'match-1',
       matchResultId: 'result-1',
-      matchResult: { submittedByUserId: 'submitter-1' },
+      matchResult: { id: 'result-1', verified: true, isCorrected: false, teamAScore: 21, teamBScore: 17, submittedByUserId: 'submitter-1' },
     });
     tx.matchResultDispute.update.mockResolvedValue({ id: 'dispute-1', status: DisputeStatus.REJECTED });
 
     await service.updateDispute('dispute-1', 'mod-1', { status: DisputeStatus.REJECTED });
 
     expect(reliabilityService.decrementDisputedResults).toHaveBeenCalledWith('user-1', tx);
+    expect(ratingCorrectionService.applyDisputeRatingCorrection).not.toHaveBeenCalled();
     expect(tx.moderationAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ actionType: 'DISPUTE_REJECTED', disputeId: 'dispute-1' }),
       }),
     );
+  });
+
+  it('resolved dispute with corrected scores applies rating correction and stores moderation metadata', async () => {
+    const { service, prisma, tx, ratingCorrectionService, notificationsService } = createService();
+    prisma.matchResultDispute.findUnique.mockResolvedValue({
+      id: 'dispute-1',
+      status: DisputeStatus.OPEN,
+      createdByUserId: 'creator-1',
+      matchId: 'match-1',
+      matchResultId: 'result-1',
+      matchResult: {
+        id: 'result-1',
+        verified: true,
+        isCorrected: false,
+        teamAScore: 21,
+        teamBScore: 17,
+        submittedByUserId: 'submitter-1',
+      },
+    });
+    tx.matchResultDispute.update.mockResolvedValue({ id: 'dispute-1', status: DisputeStatus.RESOLVED });
+    ratingCorrectionService.applyDisputeRatingCorrection.mockResolvedValue({
+      matchId: 'match-1',
+      resultId: 'result-1',
+      correctionUpdates: [
+        { userId: 'u1', sportId: 'sport-1', oldRating: 1200, newRating: 1184, delta: -16 },
+      ],
+    });
+
+    await service.updateDispute('dispute-1', 'mod-1', {
+      status: DisputeStatus.RESOLVED,
+      correctedTeamAScore: 17,
+      correctedTeamBScore: 21,
+    });
+
+    expect(ratingCorrectionService.applyDisputeRatingCorrection).toHaveBeenCalledWith(
+      tx,
+      'dispute-1',
+      'mod-1',
+      { teamAScore: 17, teamBScore: 21 },
+      undefined,
+    );
+    expect(tx.moderationAction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actionType: 'DISPUTE_RESOLVED',
+          metadata: expect.objectContaining({
+            originalTeamAScore: 21,
+            originalTeamBScore: 17,
+            correctedTeamAScore: 17,
+            correctedTeamBScore: 21,
+            ratingCorrectionApplied: true,
+          }),
+        }),
+      }),
+    );
+    expect(notificationsService.createManyNotifications).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: 'u1',
+          type: NotificationType.RATING_UPDATED,
+        }),
+      ]),
+    );
+  });
+
+  it('rejects correction when result is not verified', async () => {
+    const { service, prisma } = createService();
+    prisma.matchResultDispute.findUnique.mockResolvedValue({
+      id: 'dispute-1',
+      status: DisputeStatus.OPEN,
+      createdByUserId: 'creator-1',
+      matchId: 'match-1',
+      matchResultId: 'result-1',
+      matchResult: {
+        id: 'result-1',
+        verified: false,
+        isCorrected: false,
+        teamAScore: 21,
+        teamBScore: 17,
+        submittedByUserId: 'submitter-1',
+      },
+    });
+
+    await expect(
+      service.updateDispute('dispute-1', 'mod-1', {
+        status: DisputeStatus.RESOLVED,
+        correctedTeamAScore: 17,
+        correctedTeamBScore: 21,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects correction when result is already corrected', async () => {
+    const { service, prisma } = createService();
+    prisma.matchResultDispute.findUnique.mockResolvedValue({
+      id: 'dispute-1',
+      status: DisputeStatus.OPEN,
+      createdByUserId: 'creator-1',
+      matchId: 'match-1',
+      matchResultId: 'result-1',
+      matchResult: {
+        id: 'result-1',
+        verified: true,
+        isCorrected: true,
+        teamAScore: 21,
+        teamBScore: 17,
+        submittedByUserId: 'submitter-1',
+      },
+    });
+
+    await expect(
+      service.updateDispute('dispute-1', 'mod-1', {
+        status: DisputeStatus.RESOLVED,
+        correctedTeamAScore: 17,
+        correctedTeamBScore: 21,
+      }),
+    ).rejects.toThrow('Result has already been corrected');
   });
 
   it('reversing no-show sets participant back to joined and decrements no-show count', async () => {

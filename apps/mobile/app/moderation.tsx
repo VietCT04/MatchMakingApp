@@ -12,6 +12,7 @@ import { AppButton } from '../src/components/ui/AppButton';
 import { AppCard } from '../src/components/ui/AppCard';
 import { Badge } from '../src/components/ui/Badge';
 import { Chip } from '../src/components/ui/Chip';
+import { AppInput } from '../src/components/ui/AppInput';
 import { apiClient } from '../src/lib/api';
 
 type ModerationTab = 'REPORTS' | 'DISPUTES' | 'NO_SHOWS';
@@ -32,6 +33,13 @@ type ModerateDisputeItem = {
   reason: string;
   status: string;
   createdByUserId: string;
+  matchResult?: {
+    teamAScore?: number;
+    teamBScore?: number;
+    correctedTeamAScore?: number | null;
+    correctedTeamBScore?: number | null;
+    isCorrected?: boolean;
+  } | null;
   createdByUser?: { displayName?: string };
   match?: { title?: string } | null;
 };
@@ -55,6 +63,7 @@ export default function ModerationScreen() {
   const [reports, setReports] = useState<ModerateReportItem[]>([]);
   const [disputes, setDisputes] = useState<ModerateDisputeItem[]>([]);
   const [noShows, setNoShows] = useState<ModerateNoShowItem[]>([]);
+  const [disputeCorrections, setDisputeCorrections] = useState<Record<string, { teamA: string; teamB: string }>>({});
 
   const canModerate = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
 
@@ -127,6 +136,40 @@ export default function ModerationScreen() {
       await load();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Failed to update dispute.');
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function resolveDisputeWithCorrection(dispute: ModerateDisputeItem) {
+    const correction = disputeCorrections[dispute.id] ?? { teamA: '', teamB: '' };
+    const parsedTeamA = Number(correction.teamA);
+    const parsedTeamB = Number(correction.teamB);
+    if (!Number.isInteger(parsedTeamA) || parsedTeamA < 0 || !Number.isInteger(parsedTeamB) || parsedTeamB < 0) {
+      setError('Corrected Team A and Team B scores must be whole numbers greater than or equal to 0.');
+      return;
+    }
+    if (
+      parsedTeamA === dispute.matchResult?.teamAScore &&
+      parsedTeamB === dispute.matchResult?.teamBScore
+    ) {
+      setError('Corrected scores match the original verified score. Use "Resolve No Change" if no correction is needed.');
+      return;
+    }
+
+    setSavingId(dispute.id);
+    setMessage('');
+    setError('');
+    try {
+      await apiClient.updateModerationDispute(dispute.id, {
+        status: DisputeStatus.RESOLVED,
+        correctedTeamAScore: parsedTeamA,
+        correctedTeamBScore: parsedTeamB,
+      });
+      setMessage('Dispute resolved and ratings corrected.');
+      await load();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Failed to resolve dispute.');
     } finally {
       setSavingId(null);
     }
@@ -219,13 +262,52 @@ export default function ModerationScreen() {
               <Text style={styles.body}>{dispute.reason}</Text>
               <Text style={styles.meta}>Created by: {dispute.createdByUser?.displayName ?? dispute.createdByUserId}</Text>
               <Text style={styles.meta}>Match: {dispute.match?.title ?? 'N/A'}</Text>
+              <Text style={styles.meta}>
+                Original score: {dispute.matchResult?.teamAScore ?? '-'} - {dispute.matchResult?.teamBScore ?? '-'}
+              </Text>
+              <AppInput
+                label="Corrected Team A score"
+                value={disputeCorrections[dispute.id]?.teamA ?? ''}
+                keyboardType="number-pad"
+                onChangeText={(value) =>
+                  setDisputeCorrections((prev) => ({
+                    ...prev,
+                    [dispute.id]: {
+                      teamA: value,
+                      teamB: prev[dispute.id]?.teamB ?? '',
+                    },
+                  }))
+                }
+              />
+              <AppInput
+                label="Corrected Team B score"
+                value={disputeCorrections[dispute.id]?.teamB ?? ''}
+                keyboardType="number-pad"
+                helperText="If the verified score was wrong, enter corrected scores. Ratings will be corrected."
+                onChangeText={(value) =>
+                  setDisputeCorrections((prev) => ({
+                    ...prev,
+                    [dispute.id]: {
+                      teamA: prev[dispute.id]?.teamA ?? '',
+                      teamB: value,
+                    },
+                  }))
+                }
+              />
               <View style={styles.actions}>
                 <AppButton
                   variant="primary"
+                  onPress={() => void resolveDisputeWithCorrection(dispute)}
+                  disabled={savingId === dispute.id}
+                >
+                  Resolve + Correct
+                </AppButton>
+                <AppButton
+                  variant="secondary"
                   onPress={() => void moderateDispute(dispute.id, 'RESOLVED')}
                   disabled={savingId === dispute.id}
                 >
-                  Resolve
+                  Resolve No Change
                 </AppButton>
                 <AppButton
                   variant="secondary"

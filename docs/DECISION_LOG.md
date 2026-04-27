@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-04-27: Elo rollback and reapply for corrected disputes (match-level MVP)
+
+Decision:
+- Extend `MatchResult` with correction metadata (`isCorrected`, corrected scores, correction user/time/reason).
+- Extend `RatingHistory` with reversal/correction tracing fields (`isReverted`, `revertedAt`, `revertReason`, `correctionOfRatingHistoryId`).
+- Add `metadata` JSON on `ModerationAction` for score-correction audit details.
+- Implement `RatingCorrectionService` and call it from moderation dispute resolution when corrected scores are provided.
+- Preserve history instead of overwriting:
+  - mark original match history rows as reverted
+  - append new corrected history rows
+
+Reasoning:
+- Moderators needed a safe way to fix Elo after validated score-entry mistakes.
+- Immutable/auditable rating history is required for trust and debugging.
+- A match-local rollback/reapply model is safer and simpler for MVP than global replay.
+
+Follow-up:
+- Add full chronological replay when users have later matches impacted by a corrected historical result.
+- Add richer moderator controls and visibility around correction side effects.
+
 ## 2026-04-27: Admin/moderation workflow MVP with auditable reliability correction
 
 Decision:

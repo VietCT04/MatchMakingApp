@@ -59,6 +59,8 @@
   - disputes (`RESOLVED` / `REJECTED`)
   - no-show reviews (`CONFIRM` / `REVERSE`)
 - Moderation actions are audited in `ModerationAction` records.
+- Dispute score correction actions include audit metadata (original vs corrected score and whether rating correction was applied).
+- Rating corrections preserve original `RatingHistory` rows by marking them reverted and appending correction rows.
 - Remaining TODO:
   - richer moderation dashboard
   - toxic chat/spam automation

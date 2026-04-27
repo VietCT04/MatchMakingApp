@@ -33,6 +33,7 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
   - report/dispute/no-show moderation queues
   - moderation resolution actions with audit logs
   - reliability-penalty correction on moderation outcomes
+  - Elo rollback + reapply for corrected verified-result disputes (match-level MVP)
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -218,6 +219,9 @@ pnpm typecheck
   - Elo measures skill/performance.
   - Reliability measures trust/safety behavior.
 - Moderation endpoints are role-restricted to `MODERATOR` and `ADMIN`.
+- Dispute correction preserves rating auditability:
+  - original `RatingHistory` rows are marked reverted
+  - correction `RatingHistory` rows are appended (no silent overwrite)
 
 ## Implemented MVP Mobile Flow
 - Stable authenticated flow now covers:
@@ -258,6 +262,7 @@ pnpm typecheck
 - Payments.
 - Additional PostGIS tuning for large-scale nearby search (query plans, selective indexes, and operational monitoring).
 - Rich admin moderation dashboard and dispute score-correction/Elo rollback tooling.
+- Full chronological rating replay for post-correction downstream matches.
 - WebSocket/realtime chat delivery.
 - WebSocket/realtime notification delivery.
 - Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).

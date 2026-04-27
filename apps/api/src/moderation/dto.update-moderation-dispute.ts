@@ -1,5 +1,5 @@
 import { DisputeStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpdateModerationDisputeDto {
   @IsEnum(DisputeStatus)
@@ -9,4 +9,14 @@ export class UpdateModerationDisputeDto {
   @IsString()
   @MaxLength(500)
   moderatorNote?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  correctedTeamAScore?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  correctedTeamBScore?: number;
 }

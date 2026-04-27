@@ -223,6 +223,8 @@ sports-matchmaking/
 - User role model is implemented (`USER`, `MODERATOR`, `ADMIN`) and moderation endpoints are protected by role guard.
 - Moderation outcomes are audited in `ModerationAction`.
 - Moderation review can correct reliability penalties for dismissed reports, rejected disputes, and reversed no-shows.
+- Moderation dispute resolution can also correct verified match-result Elo updates when corrected scores are provided.
+- Rating correction preserves history: original `RatingHistory` rows are marked reverted, and correction rows are appended.
 - Per-match mute affects push delivery only; in-app notifications remain visible and queryable.
 - Current fit weights:
   - distance 30%
@@ -245,6 +247,7 @@ sports-matchmaking/
 - Passwords are stored as bcrypt hashes; plaintext passwords are not stored.
 - Protected match write endpoints derive user identity from JWT.
 - No dedicated external admin web app yet (moderation currently handled through API + lightweight mobile screen).
+- Elo correction replay currently recalculates only the disputed match; full chronological replay across later matches is a future improvement.
 - No rate limiting or abuse protection yet.
 - Verified result flow automatically updates ratings and writes rating history.
 - Database-backed backend integration coverage exists for the MVP match flow.

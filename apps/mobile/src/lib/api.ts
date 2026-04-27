@@ -511,7 +511,12 @@ export const apiClient = {
 
   updateModerationDispute(
     disputeId: string,
-    payload: { status: DisputeStatus.RESOLVED | DisputeStatus.REJECTED; moderatorNote?: string },
+    payload: {
+      status: DisputeStatus.RESOLVED | DisputeStatus.REJECTED;
+      moderatorNote?: string;
+      correctedTeamAScore?: number;
+      correctedTeamBScore?: number;
+    },
   ): Promise<MatchResultDisputeDto> {
     return request(`/moderation/disputes/${disputeId}`, {
       method: 'PATCH',

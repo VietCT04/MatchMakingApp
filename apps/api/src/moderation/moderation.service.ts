@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
 } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RatingCorrectionService } from '../ratings/rating-correction.service';
 import { ReliabilityService } from '../reliability/reliability.service';
 import { ModerationDisputesQueryDto } from './dto.moderation-disputes-query';
 import { ModerationReportsQueryDto } from './dto.moderation-reports-query';
@@ -31,6 +33,7 @@ export class ModerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reliabilityService: ReliabilityService,
+    private readonly ratingCorrectionService: RatingCorrectionService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -99,6 +102,9 @@ export class ModerationService {
             submittedByUserId: true,
             teamAScore: true,
             teamBScore: true,
+            correctedTeamAScore: true,
+            correctedTeamBScore: true,
+            isCorrected: true,
             verified: true,
           },
         },
@@ -205,12 +211,32 @@ export class ModerationService {
     if (dto.status !== DisputeStatus.RESOLVED && dto.status !== DisputeStatus.REJECTED) {
       throw new BadRequestException('Dispute status must be RESOLVED or REJECTED');
     }
+    if (
+      dto.status === DisputeStatus.REJECTED &&
+      (dto.correctedTeamAScore !== undefined || dto.correctedTeamBScore !== undefined)
+    ) {
+      throw new BadRequestException('Corrected scores are only allowed when resolving disputes');
+    }
+    if (
+      dto.status === DisputeStatus.RESOLVED &&
+      ((dto.correctedTeamAScore !== undefined && dto.correctedTeamBScore === undefined) ||
+        (dto.correctedTeamBScore !== undefined && dto.correctedTeamAScore === undefined))
+    ) {
+      throw new BadRequestException(
+        'Both correctedTeamAScore and correctedTeamBScore are required when applying score correction',
+      );
+    }
 
     const dispute = await this.prisma.matchResultDispute.findUnique({
       where: { id: disputeId },
       include: {
         matchResult: {
           select: {
+            id: true,
+            verified: true,
+            isCorrected: true,
+            teamAScore: true,
+            teamBScore: true,
             submittedByUserId: true,
           },
         },
@@ -223,7 +249,39 @@ export class ModerationService {
       throw new BadRequestException('Only OPEN disputes can be moderated');
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const hasCorrectionPayload =
+      dto.correctedTeamAScore !== undefined && dto.correctedTeamBScore !== undefined;
+    const hasScoreChange =
+      hasCorrectionPayload &&
+      (dto.correctedTeamAScore !== dispute.matchResult.teamAScore ||
+        dto.correctedTeamBScore !== dispute.matchResult.teamBScore);
+
+    if (dto.status === DisputeStatus.RESOLVED && hasScoreChange && !dispute.matchResult.verified) {
+      throw new BadRequestException('Cannot apply rating correction for an unverified result');
+    }
+
+    if (dto.status === DisputeStatus.RESOLVED && hasScoreChange && dispute.matchResult.isCorrected) {
+      throw new ConflictException('Result has already been corrected');
+    }
+
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      let correctionOutcome:
+        | Awaited<ReturnType<RatingCorrectionService['applyDisputeRatingCorrection']>>
+        | null = null;
+
+      if (dto.status === DisputeStatus.RESOLVED && hasScoreChange) {
+        correctionOutcome = await this.ratingCorrectionService.applyDisputeRatingCorrection(
+          tx,
+          disputeId,
+          moderatorUserId,
+          {
+            teamAScore: dto.correctedTeamAScore as number,
+            teamBScore: dto.correctedTeamBScore as number,
+          },
+          dto.moderatorNote,
+        );
+      }
+
       const next = await tx.matchResultDispute.update({
         where: { id: disputeId },
         data: {
@@ -249,11 +307,46 @@ export class ModerationService {
               ? ModerationActionType.DISPUTE_REJECTED
               : ModerationActionType.DISPUTE_RESOLVED,
           note: dto.moderatorNote?.trim() || null,
+          metadata:
+            dto.status === DisputeStatus.RESOLVED && hasCorrectionPayload
+              ? {
+                  originalTeamAScore: dispute.matchResult.teamAScore,
+                  originalTeamBScore: dispute.matchResult.teamBScore,
+                  correctedTeamAScore: dto.correctedTeamAScore,
+                  correctedTeamBScore: dto.correctedTeamBScore,
+                  ratingCorrectionApplied: hasScoreChange,
+                }
+              : undefined,
         },
       });
 
-      return next;
+      return {
+        dispute: next,
+        correctionOutcome,
+      };
     });
+
+    if (outcome.correctionOutcome) {
+      // TODO: This MVP only recalculates ratings for the disputed match.
+      // Future work should support chronological replay when later matches depend on this corrected result.
+      await this.safeNotifyMany(
+        outcome.correctionOutcome.correctionUpdates.map((update) => ({
+          userId: update.userId,
+          type: NotificationType.RATING_UPDATED,
+          title: 'Rating corrected',
+          body: 'Your rating was corrected after a disputed result was reviewed.',
+          data: {
+            matchId: outcome.correctionOutcome?.matchId,
+            resultId: outcome.correctionOutcome?.resultId,
+            oldRating: update.oldRating,
+            newRating: update.newRating,
+            delta: update.delta,
+            correction: true,
+            dedupeKey: `moderation:rating-correction:${outcome.correctionOutcome?.resultId}:user:${update.userId}:new:${update.newRating}`,
+          },
+        })),
+      );
+    }
 
     await this.safeNotify(
       dispute.createdByUserId,
@@ -269,7 +362,7 @@ export class ModerationService {
       },
     );
 
-    return updated;
+    return outcome.dispute;
   }
 
   async updateNoShow(participantId: string, moderatorUserId: string, dto: UpdateModerationNoShowDto) {
@@ -358,6 +451,29 @@ export class ModerationService {
     } catch (error) {
       this.logger.warn(
         `Failed to create moderation notification for user ${userId}: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+    }
+  }
+
+  private async safeNotifyMany(
+    notifications: Array<{
+      userId: string;
+      type: NotificationType;
+      title: string;
+      body: string;
+      data: Prisma.InputJsonValue;
+    }>,
+  ) {
+    if (notifications.length === 0) {
+      return;
+    }
+    try {
+      await this.notificationsService.createManyNotifications(notifications);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to create moderation notifications: ${
           error instanceof Error ? error.message : 'unknown error'
         }`,
       );

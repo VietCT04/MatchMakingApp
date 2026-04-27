@@ -92,10 +92,15 @@ new = 1216
   - Preview endpoints
   - Verified result flow updates current ratings
   - Verified result flow creates `RatingHistory` rows
+  - Moderation dispute correction for verified results:
+    - marks original match rating history rows as reverted
+    - reverts users to pre-match ratings for that disputed match
+    - reapplies Elo using corrected scores
+    - appends correction rating-history rows (no silent overwrite)
   - Unit tests (`elo.spec.ts`)
   - Database-backed MVP flow integration coverage
 - TODO:
-- Add anti-abuse/review workflow for disputed results
+- Full chronological replay across downstream matches after a corrected historical result
 - Add production permission checks around result verification
 
 ## Related Docs
