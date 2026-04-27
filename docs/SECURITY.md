@@ -23,6 +23,7 @@
 - Mobile stores access tokens with Expo SecureStore.
 - Push token registration/deactivation endpoints are JWT-protected and scoped to the current user.
 - Notification listing/read APIs are per-user only; cross-user notification access is blocked.
+- Match-level notification preference and chat unread/read APIs are JWT-protected and require match access (creator or participant).
 
 ## Future Auth Requirements (TODO)
 - Add refresh tokens or session revocation.
@@ -41,6 +42,7 @@
 - Invalid Expo tokens are deactivated when Expo returns `DeviceNotRegistered`.
 - Never expose another user's push tokens from APIs.
 - Notification preference changes are JWT-protected under `/me/notification-preferences`.
+- Quiet hours and per-match mute only affect push delivery; in-app notification records are still persisted for auditability.
 
 ## Payment Security (TODO)
 - If payments are added, use PCI-compliant provider.

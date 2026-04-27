@@ -57,6 +57,54 @@ export class ChatService {
     return messages.reverse();
   }
 
+  async getUnreadCount(matchId: string, userId: string) {
+    await this.getReadAccessContext(matchId, userId);
+
+    const readState = await this.prisma.chatReadState.findUnique({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      select: {
+        lastReadAt: true,
+      },
+    });
+
+    const count = await this.prisma.chatMessage.count({
+      where: {
+        matchId,
+        deletedAt: null,
+        senderUserId: { not: userId },
+        createdAt: readState?.lastReadAt ? { gt: readState.lastReadAt } : undefined,
+      },
+    });
+
+    return { count };
+  }
+
+  async markAsRead(matchId: string, userId: string) {
+    await this.getReadAccessContext(matchId, userId);
+    await this.prisma.chatReadState.upsert({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      create: {
+        userId,
+        matchId,
+        lastReadAt: new Date(),
+      },
+      update: {
+        lastReadAt: new Date(),
+      },
+    });
+    return { success: true };
+  }
+
   async sendMessage(matchId: string, userId: string, dto: CreateChatMessageDto) {
     const access = await this.getSendAccessContext(matchId, userId);
     const trimmedBody = dto.body.trim();
@@ -97,6 +145,23 @@ export class ChatService {
             displayName: true,
           },
         },
+      },
+    });
+
+    await this.prisma.chatReadState.upsert({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      create: {
+        userId,
+        matchId,
+        lastReadAt: message.createdAt,
+      },
+      update: {
+        lastReadAt: message.createdAt,
       },
     });
 

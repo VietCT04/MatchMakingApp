@@ -221,8 +221,26 @@ export interface NotificationPreferenceDto {
   results: boolean;
   trustSafety: boolean;
   ratingUpdates: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  timezone: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MatchNotificationPreferenceDto {
+  id: string;
+  userId: string;
+  matchId: string;
+  muted: boolean;
+  muteUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatUnreadCountDto {
+  count: number;
 }
 
 export interface RatingDto {

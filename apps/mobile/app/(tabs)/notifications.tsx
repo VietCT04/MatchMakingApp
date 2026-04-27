@@ -119,6 +119,7 @@ export default function NotificationsScreen() {
         </AppButton>
       </View>
       {pushStatusText ? <Text style={styles.pushNote}>{pushStatusText}</Text> : null}
+      <Text style={styles.pushNote}>Muted match notifications still appear here; mute only affects push delivery.</Text>
 
       {loading ? <LoadingState message="Loading notifications..." /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => void refresh()} /> : null}

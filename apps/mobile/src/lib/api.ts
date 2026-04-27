@@ -1,6 +1,8 @@
 import type {
   ChatMessageDto,
+  ChatUnreadCountDto,
   CreateMatchInput,
+  MatchNotificationPreferenceDto,
   MatchDto,
   MatchParticipantDto,
   MatchResultDisputeDto,
@@ -299,6 +301,31 @@ export const apiClient = {
     return request(`/matches/${matchId}/chat/messages${suffix ? `?${suffix}` : ''}`);
   },
 
+  getChatUnreadCount(matchId: string): Promise<ChatUnreadCountDto> {
+    return request(`/matches/${matchId}/chat/unread-count`);
+  },
+
+  markChatRead(matchId: string): Promise<{ success: boolean }> {
+    return request(`/matches/${matchId}/chat/read`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+    });
+  },
+
+  getMatchNotificationPreference(matchId: string): Promise<MatchNotificationPreferenceDto> {
+    return request(`/matches/${matchId}/notification-preference`);
+  },
+
+  updateMatchNotificationPreference(
+    matchId: string,
+    payload: { muted: boolean; muteUntil?: string | null },
+  ): Promise<MatchNotificationPreferenceDto> {
+    return request(`/matches/${matchId}/notification-preference`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
   sendMatchMessage(matchId: string, body: string): Promise<ChatMessageDto> {
     return request(`/matches/${matchId}/chat/messages`, {
       method: 'POST',
@@ -365,7 +392,18 @@ export const apiClient = {
 
   updateMyNotificationPreferences(
     payload: Partial<
-      Pick<NotificationPreferenceDto, 'matchUpdates' | 'chatMessages' | 'results' | 'trustSafety' | 'ratingUpdates'>
+      Pick<
+        NotificationPreferenceDto,
+        | 'matchUpdates'
+        | 'chatMessages'
+        | 'results'
+        | 'trustSafety'
+        | 'ratingUpdates'
+        | 'quietHoursEnabled'
+        | 'quietHoursStart'
+        | 'quietHoursEnd'
+        | 'timezone'
+      >
     >,
   ): Promise<NotificationPreferenceDto> {
     return request('/me/notification-preferences', {
@@ -376,7 +414,18 @@ export const apiClient = {
 
   updateNotificationPreferences(
     payload: Partial<
-      Pick<NotificationPreferenceDto, 'matchUpdates' | 'chatMessages' | 'results' | 'trustSafety' | 'ratingUpdates'>
+      Pick<
+        NotificationPreferenceDto,
+        | 'matchUpdates'
+        | 'chatMessages'
+        | 'results'
+        | 'trustSafety'
+        | 'ratingUpdates'
+        | 'quietHoursEnabled'
+        | 'quietHoursStart'
+        | 'quietHoursEnd'
+        | 'timezone'
+      >
     >,
   ): Promise<NotificationPreferenceDto> {
     return request('/me/notification-preferences', {

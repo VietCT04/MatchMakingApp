@@ -16,7 +16,8 @@
         {
           "locationWhenInUsePermission": "Allow Sports Matchmaking to use your location for nearby match discovery."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,6 +18,16 @@ export class ChatController {
     @Query() query: ChatMessagesQueryDto,
   ) {
     return this.chatService.getMessages(id, user.id, query);
+  }
+
+  @Get('unread-count')
+  getUnreadCount(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.chatService.getUnreadCount(id, user.id);
+  }
+
+  @Patch('read')
+  markRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.chatService.markAsRead(id, user.id);
   }
 
   @Post('messages')

@@ -1,5 +1,6 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { NotificationType, Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { MatchParticipantStatus, NotificationType, Prisma } from '@prisma/client';
+import { UpdateMatchNotificationPreferenceDto } from './dto.update-match-notification-preference';
 import { PushService } from '../push/push.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsQueryDto } from './dto.notifications-query';
@@ -161,12 +162,26 @@ export class NotificationsService {
   async getNotificationPreferences(userId: string) {
     return this.prisma.notificationPreference.upsert({
       where: { userId },
-      create: { userId },
+      create: { userId, timezone: 'Asia/Singapore' },
       update: {},
     });
   }
 
   async updateNotificationPreferences(userId: string, dto: UpdateNotificationPreferencesDto) {
+    if (dto.quietHoursEnabled) {
+      if (!dto.quietHoursStart || !dto.quietHoursEnd) {
+        throw new BadRequestException('quietHoursStart and quietHoursEnd are required when quiet hours are enabled');
+      }
+    }
+    if (dto.quietHoursStart && !dto.quietHoursEnd) {
+      throw new BadRequestException('quietHoursEnd is required when quietHoursStart is provided');
+    }
+    if (dto.quietHoursEnd && !dto.quietHoursStart) {
+      throw new BadRequestException('quietHoursStart is required when quietHoursEnd is provided');
+    }
+
+    const normalizedTimezone = dto.timezone?.trim() || 'Asia/Singapore';
+
     return this.prisma.notificationPreference.upsert({
       where: { userId },
       create: {
@@ -176,6 +191,10 @@ export class NotificationsService {
         results: dto.results ?? true,
         trustSafety: dto.trustSafety ?? true,
         ratingUpdates: dto.ratingUpdates ?? true,
+        quietHoursEnabled: dto.quietHoursEnabled ?? false,
+        quietHoursStart: dto.quietHoursStart,
+        quietHoursEnd: dto.quietHoursEnd,
+        timezone: normalizedTimezone,
       },
       update: {
         matchUpdates: dto.matchUpdates,
@@ -183,6 +202,55 @@ export class NotificationsService {
         results: dto.results,
         trustSafety: dto.trustSafety,
         ratingUpdates: dto.ratingUpdates,
+        quietHoursEnabled: dto.quietHoursEnabled,
+        quietHoursStart: dto.quietHoursStart,
+        quietHoursEnd: dto.quietHoursEnd,
+        timezone: dto.timezone?.trim(),
+      },
+    });
+  }
+
+  async getMatchNotificationPreference(userId: string, matchId: string) {
+    await this.ensureMatchNotificationAccess(userId, matchId);
+    return this.prisma.matchNotificationPreference.upsert({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      create: {
+        userId,
+        matchId,
+      },
+      update: {},
+    });
+  }
+
+  async updateMatchNotificationPreference(userId: string, matchId: string, dto: UpdateMatchNotificationPreferenceDto) {
+    await this.ensureMatchNotificationAccess(userId, matchId);
+
+    const muteUntilDate = dto.muteUntil ? new Date(dto.muteUntil) : null;
+    if (muteUntilDate && muteUntilDate.getTime() <= Date.now()) {
+      throw new BadRequestException('muteUntil must be a future datetime');
+    }
+
+    return this.prisma.matchNotificationPreference.upsert({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      create: {
+        userId,
+        matchId,
+        muted: dto.muted,
+        muteUntil: dto.muted ? muteUntilDate : null,
+      },
+      update: {
+        muted: dto.muted,
+        muteUntil: dto.muted ? muteUntilDate : null,
       },
     });
   }
@@ -214,6 +282,38 @@ export class NotificationsService {
           error instanceof Error ? error.message : 'unknown error'
         }`,
       );
+    }
+  }
+
+  private async ensureMatchNotificationAccess(userId: string, matchId: string) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        createdByUserId: true,
+        participants: {
+          where: {
+            userId,
+            status: {
+              in: [MatchParticipantStatus.JOINED, MatchParticipantStatus.LEFT, MatchParticipantStatus.NO_SHOW],
+            },
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    const isCreator = match.createdByUserId === userId;
+    const isParticipant = match.participants.length > 0;
+    if (!isCreator && !isParticipant) {
+      throw new ForbiddenException('Only match participants or creator can manage match notification preference');
     }
   }
 }

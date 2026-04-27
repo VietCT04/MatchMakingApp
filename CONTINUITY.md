@@ -62,6 +62,8 @@ sports-matchmaking/
 - Chat endpoints:
   - `GET /matches/:id/chat/messages`
   - `POST /matches/:id/chat/messages`
+  - `GET /matches/:id/chat/unread-count`
+  - `PATCH /matches/:id/chat/read`
 - Notification endpoints:
   - `GET /notifications`
   - `GET /notifications/unread-count`
@@ -74,6 +76,8 @@ sports-matchmaking/
 - Notification preferences endpoints:
   - `GET /me/notification-preferences`
   - `PATCH /me/notification-preferences`
+  - `GET /matches/:id/notification-preference`
+  - `PATCH /matches/:id/notification-preference`
 - Reliability endpoints:
   - `GET /me/reliability`
   - `GET /users/:userId/reliability`
@@ -151,6 +155,8 @@ sports-matchmaking/
   - manual refresh
   - focused interval polling
   - send-and-refresh flow
+  - marks chat as read on open
+  - unread count support through REST endpoint
 - Notifications tab (`/notifications`) provides:
   - unread count
   - mark all as read
@@ -160,6 +166,7 @@ sports-matchmaking/
 - Notification settings route (`/notification-settings`) provides:
   - load and edit current push preferences
   - save-based toggles for `matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`
+  - quiet hours controls (`quietHoursEnabled`, `quietHoursStart`, `quietHoursEnd`, `timezone`)
   - loading/error/retry and save success/error states
 - Mobile auth now attempts push token registration after login/register/session restore, and deactivates known token on logout.
 - Push notification taps navigate to match detail when `matchId` exists, otherwise to Notifications tab.
@@ -203,6 +210,8 @@ sports-matchmaking/
 - Push sending failures are non-blocking and do not roll back core workflows.
 - Invalid Expo tokens are deactivated when Expo returns `DeviceNotRegistered`.
 - Push delivery respects backend notification preferences (`matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`).
+- Push delivery also respects quiet hours and per-match mute preferences.
+- Per-match mute affects push delivery only; in-app notifications remain visible and queryable.
 - Current fit weights:
   - distance 30%
   - rating fit 30%
@@ -233,7 +242,7 @@ sports-matchmaking/
 1. Continue UI polish for mobile screens (spacing, forms, participant display, score UX).
 2. Tune PostGIS geospatial queries and indexes (e.g. explain plans, additional query tuning for high-volume datasets).
 3. Add websocket realtime chat/notification delivery using existing notification events.
-4. Add advanced notification controls (per-match mute, quiet hours) and push receipt analytics.
+4. Add push receipt analytics and delivery diagnostics UX.
 5. Implement payments.
 6. Add moderation workflow (resolve/reject disputes, review/dismiss reports) and operator tooling.
 7. Evolve ranking with availability windows, reliability trends over time, and learned recommendations.

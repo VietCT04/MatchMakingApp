@@ -11,6 +11,12 @@ type ExpoPushMessage = {
   sound?: 'default';
 };
 
+type NormalizedNotificationData = Record<string, unknown> & {
+  matchId?: string;
+  resultId?: string;
+  chatMessageId?: string;
+};
+
 type ExpoPushTicket = {
   status: 'ok' | 'error';
   id?: string;
@@ -35,6 +41,10 @@ type PushPreferences = {
   results: boolean;
   trustSafety: boolean;
   ratingUpdates: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  timezone: string | null;
 };
 
 export type PushSender = (messages: ExpoPushMessage[]) => Promise<ExpoPushTicket[]>;
@@ -111,7 +121,8 @@ export class PushService {
   }
 
   async deliverNotification(notification: NotificationLike) {
-    const shouldSend = await this.isPushEnabledForType(notification.userId, notification.type);
+    const normalizedData = this.normalizeNotificationData(notification);
+    const shouldSend = await this.isPushEnabledForNotification(notification.userId, notification.type, normalizedData.matchId);
     if (!shouldSend) {
       return { sent: 0, skipped: true };
     }
@@ -126,13 +137,12 @@ export class PushService {
       return { sent: 0, skipped: false };
     }
 
-    const eventData = this.normalizeNotificationData(notification);
     const messages: ExpoPushMessage[] = devices.map((device) => ({
       to: device.expoPushToken,
       title: notification.title,
       body: notification.body,
       sound: 'default',
-      data: eventData,
+      data: normalizedData,
     }));
 
     const tickets = await this.pushSender(messages);
@@ -140,8 +150,8 @@ export class PushService {
     return { sent: messages.length, skipped: false };
   }
 
-  private normalizeNotificationData(notification: NotificationLike): Record<string, unknown> {
-    const data: Record<string, unknown> = {
+  private normalizeNotificationData(notification: NotificationLike): NormalizedNotificationData {
+    const data: NormalizedNotificationData = {
       notificationId: notification.id,
       type: notification.type,
     };
@@ -174,7 +184,11 @@ export class PushService {
     );
   }
 
-  private async isPushEnabledForType(userId: string, type: NotificationType): Promise<boolean> {
+  private async isPushEnabledForNotification(
+    userId: string,
+    type: NotificationType,
+    matchId?: string,
+  ): Promise<boolean> {
     if (type === NotificationType.SYSTEM) {
       return true;
     }
@@ -187,6 +201,10 @@ export class PushService {
         results: true,
         trustSafety: true,
         ratingUpdates: true,
+        quietHoursEnabled: true,
+        quietHoursStart: true,
+        quietHoursEnd: true,
+        timezone: true,
       },
     });
     const effective: PushPreferences = preference ?? {
@@ -195,9 +213,14 @@ export class PushService {
       results: true,
       trustSafety: true,
       ratingUpdates: true,
+      quietHoursEnabled: false,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+      timezone: 'Asia/Singapore',
     };
 
-    switch (type) {
+    const enabledByType = (() => {
+      switch (type) {
       case NotificationType.CHAT_MESSAGE:
         return effective.chatMessages;
       case NotificationType.MATCH_JOINED:
@@ -215,6 +238,85 @@ export class PushService {
         return effective.ratingUpdates;
       default:
         return true;
+      }
+    })();
+    if (!enabledByType) {
+      return false;
+    }
+
+    if (effective.quietHoursEnabled && this.isWithinQuietHours(effective)) {
+      return false;
+    }
+
+    if (!matchId) {
+      return true;
+    }
+
+    const matchPreference = await this.prisma.matchNotificationPreference.findUnique({
+      where: {
+        userId_matchId: {
+          userId,
+          matchId,
+        },
+      },
+      select: {
+        muted: true,
+        muteUntil: true,
+      },
+    });
+    if (!matchPreference?.muted) {
+      return true;
+    }
+    if (!matchPreference.muteUntil) {
+      return false;
+    }
+    return matchPreference.muteUntil.getTime() <= Date.now();
+  }
+
+  private isWithinQuietHours(preference: PushPreferences): boolean {
+    if (!preference.quietHoursEnabled || !preference.quietHoursStart || !preference.quietHoursEnd) {
+      return false;
+    }
+    const timezone = preference.timezone || 'Asia/Singapore';
+    const currentTime = this.getTimeInTimezone(timezone);
+    const start = this.hhmmToMinutes(preference.quietHoursStart);
+    const end = this.hhmmToMinutes(preference.quietHoursEnd);
+    if (start === null || end === null || currentTime === null) {
+      return false;
+    }
+    if (start === end) {
+      return true;
+    }
+    if (start < end) {
+      return currentTime >= start && currentTime < end;
+    }
+    return currentTime >= start || currentTime < end;
+  }
+
+  private hhmmToMinutes(value: string): number | null {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+    if (!match) {
+      return null;
+    }
+    return Number(match[1]) * 60 + Number(match[2]);
+  }
+
+  private getTimeInTimezone(timezone: string): number | null {
+    try {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date());
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '');
+      const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '');
+      if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
+        return null;
+      }
+      return hour * 60 + minute;
+    } catch {
+      return null;
     }
   }
 }

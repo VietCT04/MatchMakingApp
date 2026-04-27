@@ -87,6 +87,7 @@ export default function MatchChatScreen() {
         ]);
         setMatch(nextMatch);
         setMessages(nextMessages);
+        await apiClient.markChatRead(matchId);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Could not load chat.');
       } finally {
@@ -101,6 +102,7 @@ export default function MatchChatScreen() {
       if (!matchId) {
         return () => undefined;
       }
+      void apiClient.markChatRead(matchId).catch(() => undefined);
       const timer = setInterval(() => {
         void fetchMessages(false);
       }, POLL_INTERVAL_MS);
@@ -144,6 +146,7 @@ export default function MatchChatScreen() {
       await apiClient.sendMatchMessage(matchId, body);
       setComposer('');
       await fetchMessages(false);
+      await apiClient.markChatRead(matchId);
     } catch (nextError) {
       setSendError(nextError instanceof Error ? nextError.message : 'Could not send message.');
     } finally {

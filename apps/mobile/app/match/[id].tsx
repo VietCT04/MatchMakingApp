@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { MatchParticipantStatus, MatchStatus, Team } from '@sports-matchmaking/shared';
 import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
@@ -32,8 +32,12 @@ export default function MatchDetailScreen() {
   const [disputeReason, setDisputeReason] = useState('Score is incorrect');
   const [reportReason, setReportReason] = useState('No show without notice');
   const [busy, setBusy] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: FeedbackTone; message: string } | null>(null);
   const [disputedResultIds, setDisputedResultIds] = useState<string[]>([]);
+  const [isMatchMuted, setIsMatchMuted] = useState(false);
+  const [muteUntil, setMuteUntil] = useState<string | null>(null);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
 
   const now = Date.now();
   const participants = match?.participants ?? [];
@@ -100,6 +104,33 @@ export default function MatchDetailScreen() {
     user &&
       match &&
       (match.createdByUserId === user.id || currentUserParticipation),
+  );
+
+  const loadNotificationControls = useCallback(async () => {
+    if (!matchId || !user) {
+      setIsMatchMuted(false);
+      setMuteUntil(null);
+      setChatUnreadCount(0);
+      return;
+    }
+
+    try {
+      const [matchPreference, unread] = await Promise.all([
+        apiClient.getMatchNotificationPreference(matchId),
+        canReadChat ? apiClient.getChatUnreadCount(matchId) : Promise.resolve({ count: 0 }),
+      ]);
+      setIsMatchMuted(matchPreference.muted);
+      setMuteUntil(matchPreference.muteUntil ?? null);
+      setChatUnreadCount(unread.count);
+    } catch {
+      // Keep core match detail usable even if preference/read-state fetch fails.
+    }
+  }, [canReadChat, matchId, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadNotificationControls();
+    }, [loadNotificationControls]),
   );
 
   function setErrorFeedback(message: string) {
@@ -230,6 +261,40 @@ export default function MatchDetailScreen() {
     return 'No available action right now.';
   }
 
+  async function setMatchMute(muted: boolean, nextMuteUntil?: string | null) {
+    if (!matchId) {
+      return;
+    }
+    setNotificationBusy(true);
+    setFeedback(null);
+    try {
+      const updated = await apiClient.updateMatchNotificationPreference(matchId, {
+        muted,
+        muteUntil: nextMuteUntil ?? null,
+      });
+      setIsMatchMuted(updated.muted);
+      setMuteUntil(updated.muteUntil);
+      setSuccessFeedback(
+        muted
+          ? nextMuteUntil
+            ? 'Push notifications muted for this match until selected time.'
+            : 'Push notifications muted for this match.'
+          : 'Push notifications unmuted for this match.',
+      );
+    } catch (nextError) {
+      setErrorFeedback(nextError instanceof Error ? nextError.message : 'Could not update match notification preference.');
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
+
+  function muteUntilTomorrowIso() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0);
+    return tomorrow.toISOString();
+  }
+
   return (
     <Screen>
       <ScreenHeader title="Match detail" subtitle="Review teams, manage actions, and complete result verification." />
@@ -295,6 +360,9 @@ export default function MatchDetailScreen() {
               <Text style={styles.sectionBody}>
                 Coordinate arrival time, court notes, and quick updates with match players.
               </Text>
+              <Text style={styles.sectionBody}>
+                {chatUnreadCount > 0 ? `${chatUnreadCount} unread messages` : 'No unread messages'}
+              </Text>
               <AppButton
                 variant="secondary"
                 onPress={() =>
@@ -304,8 +372,37 @@ export default function MatchDetailScreen() {
                   })
                 }
               >
-                Open chat
+                {chatUnreadCount > 0 ? `Open chat • ${chatUnreadCount} unread` : 'Open chat'}
               </AppButton>
+            </AppCard>
+          ) : null}
+
+          {canReadChat ? (
+            <AppCard>
+              <Text style={styles.sectionTitle}>Match notifications</Text>
+              <Text style={styles.sectionBody}>
+                {isMatchMuted
+                  ? muteUntil
+                    ? `Push notifications are muted for this match until ${new Date(muteUntil).toLocaleString()}.`
+                    : 'Push notifications are muted for this match.'
+                  : 'Push notifications are active for this match.'}
+              </Text>
+              <AppButton
+                variant="secondary"
+                loading={notificationBusy}
+                onPress={() => void setMatchMute(!isMatchMuted, null)}
+              >
+                {isMatchMuted ? 'Unmute match notifications' : 'Mute match notifications'}
+              </AppButton>
+              {!isMatchMuted ? (
+                <AppButton
+                  variant="secondary"
+                  loading={notificationBusy}
+                  onPress={() => void setMatchMute(true, muteUntilTomorrowIso())}
+                >
+                  Mute until tomorrow 08:00
+                </AppButton>
+              ) : null}
             </AppCard>
           ) : null}
 

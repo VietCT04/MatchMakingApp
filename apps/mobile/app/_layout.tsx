@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AuthProvider } from '../src/auth/AuthContext';
 import { useAuth } from '../src/auth/AuthContext';
@@ -7,6 +7,7 @@ import { useAuth } from '../src/auth/AuthContext';
 function AuthGate() {
   const { authLoading, user } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
   const inAuthGroup = segments[0] === '(auth)';
   const isPublicRoute = inAuthGroup || segments[0] === 'login' || segments[0] === 'register';
@@ -15,7 +16,7 @@ function AuthGate() {
     if (authLoading) {
       return;
     }
-    const isRootIndex = segments.length === 0;
+    const isRootIndex = pathname === '/';
     if (!user && !isPublicRoute) {
       router.replace('/login');
       return;
@@ -27,7 +28,7 @@ function AuthGate() {
     if (user && isPublicRoute) {
       router.replace('/discover');
     }
-  }, [authLoading, isPublicRoute, router, segments.length, user]);
+  }, [authLoading, isPublicRoute, pathname, router, user]);
 
   if (authLoading) {
     return (

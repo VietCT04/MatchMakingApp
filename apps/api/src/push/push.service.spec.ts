@@ -5,6 +5,7 @@ import { PushService } from './push.service';
 describe('PushService', () => {
   function createService(options?: {
     preference?: any;
+    matchPreference?: any;
     devices?: Array<{ id: string; expoPushToken: string; isActive?: boolean }>;
     sender?: jest.Mock;
     findUniqueDevice?: any;
@@ -28,6 +29,9 @@ describe('PushService', () => {
       },
       notificationPreference: {
         findUnique: jest.fn().mockResolvedValue(options?.preference ?? null),
+      },
+      matchNotificationPreference: {
+        findUnique: jest.fn().mockResolvedValue(options?.matchPreference ?? null),
       },
     };
     return {
@@ -138,5 +142,55 @@ describe('PushService', () => {
       where: { id: 'd-1' },
       data: { isActive: false },
     });
+  });
+
+  it('muted match blocks push delivery', async () => {
+    const sender = jest.fn();
+    const { service } = createService({
+      sender,
+      devices: [{ id: 'd-1', expoPushToken: 'ExponentPushToken[abc]' }],
+      matchPreference: { muted: true, muteUntil: null },
+    });
+
+    await service.deliverNotification({
+      id: 'n-1',
+      userId: 'user-1',
+      type: NotificationType.CHAT_MESSAGE,
+      title: 'New chat message',
+      body: 'Muted',
+      data: { matchId: 'match-1' },
+    });
+
+    expect(sender).not.toHaveBeenCalled();
+  });
+
+  it('quiet hours block push delivery', async () => {
+    const sender = jest.fn();
+    const { service } = createService({
+      sender,
+      devices: [{ id: 'd-1', expoPushToken: 'ExponentPushToken[abc]' }],
+      preference: {
+        matchUpdates: true,
+        chatMessages: true,
+        results: true,
+        trustSafety: true,
+        ratingUpdates: true,
+        quietHoursEnabled: true,
+        quietHoursStart: '00:00',
+        quietHoursEnd: '23:59',
+        timezone: 'Asia/Singapore',
+      },
+    });
+
+    await service.deliverNotification({
+      id: 'n-1',
+      userId: 'user-1',
+      type: NotificationType.MATCH_JOINED,
+      title: 'Join',
+      body: 'Body',
+      data: { matchId: 'match-1' },
+    });
+
+    expect(sender).not.toHaveBeenCalled();
   });
 });

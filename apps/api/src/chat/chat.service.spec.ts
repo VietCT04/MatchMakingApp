@@ -34,6 +34,7 @@ describe('ChatService', () => {
       },
       chatMessage: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
         create: jest.fn().mockImplementation(async ({ data }: any) => ({
           id: 'message-1',
           matchId: data.matchId,
@@ -47,6 +48,10 @@ describe('ChatService', () => {
             displayName: 'Sender Name',
           },
         })),
+      },
+      chatReadState: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue({}),
       },
     };
     return {
@@ -183,5 +188,55 @@ describe('ChatService', () => {
     await expect(
       service.sendMessage('match-1', 'player-1', { body: 'a'.repeat(1001) }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('chat unread count excludes own messages', async () => {
+    const { service, prisma } = createService(
+      createMatchRecord({
+        participantStatus: MatchParticipantStatus.JOINED,
+      }),
+    );
+    prisma.chatReadState.findUnique.mockResolvedValue({ lastReadAt: new Date('2026-04-27T10:00:00.000Z') });
+    prisma.chatMessage.count.mockResolvedValue(3);
+
+    const result = await service.getUnreadCount('match-1', 'player-1');
+
+    expect(result).toEqual({ count: 3 });
+    expect(prisma.chatMessage.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          senderUserId: { not: 'player-1' },
+        }),
+      }),
+    );
+  });
+
+  it('chat unread count decreases to zero after mark read', async () => {
+    const { service, prisma } = createService(
+      createMatchRecord({
+        participantStatus: MatchParticipantStatus.JOINED,
+      }),
+    );
+    prisma.chatReadState.findUnique.mockResolvedValue({ lastReadAt: null });
+    prisma.chatMessage.count
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0);
+
+    const before = await service.getUnreadCount('match-1', 'player-1');
+    await service.markAsRead('match-1', 'player-1');
+    prisma.chatReadState.findUnique.mockResolvedValue({ lastReadAt: new Date() });
+    const after = await service.getUnreadCount('match-1', 'player-1');
+
+    expect(before).toEqual({ count: 2 });
+    expect(after).toEqual({ count: 0 });
+    expect(prisma.chatReadState.upsert).toHaveBeenCalled();
+  });
+
+  it('non-participant cannot mark chat read', async () => {
+    const { service } = createService(
+      createMatchRecord({ participantStatus: null, createdByUserId: 'creator-1' }),
+    );
+
+    await expect(service.markAsRead('match-1', 'outsider-1')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

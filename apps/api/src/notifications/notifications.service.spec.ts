@@ -34,6 +34,21 @@ describe('NotificationsService', () => {
           ...update,
         })),
       },
+      match: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'match-1',
+          createdByUserId: 'user-1',
+          participants: [],
+        }),
+      },
+      matchNotificationPreference: {
+        upsert: jest.fn().mockImplementation(async ({ create, update }: any) => ({
+          id: 'mnp-1',
+          muteUntil: null,
+          ...create,
+          ...update,
+        })),
+      },
     };
 
     return {
@@ -106,5 +121,50 @@ describe('NotificationsService', () => {
     await expect(
       service.createNotification('user-1', NotificationType.SYSTEM, 'System', 'Body'),
     ).resolves.toEqual(expect.objectContaining({ id: 'notification-1' }));
+  });
+
+  it('quiet-hours or mute push skip still keeps notification record', async () => {
+    const { service, prisma, pushService } = createService();
+    pushService.deliverNotification.mockResolvedValue({ sent: 0, skipped: true });
+
+    const result = await service.createNotification(
+      'user-1',
+      NotificationType.CHAT_MESSAGE,
+      'Chat',
+      'Body',
+      { matchId: 'match-1' },
+    );
+
+    expect(result).toEqual(expect.objectContaining({ id: 'notification-1' }));
+    expect(prisma.notification.create).toHaveBeenCalled();
+    expect(pushService.deliverNotification).toHaveBeenCalled();
+  });
+
+  it('match mute preference can be created and updated', async () => {
+    const { service, prisma } = createService();
+
+    const created = await service.getMatchNotificationPreference('user-1', 'match-1');
+    expect(created).toEqual(expect.objectContaining({ id: 'mnp-1' }));
+
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    const updated = await service.updateMatchNotificationPreference('user-1', 'match-1', {
+      muted: true,
+      muteUntil: future,
+    });
+    expect(updated).toEqual(expect.objectContaining({ muted: true }));
+    expect(prisma.matchNotificationPreference.upsert).toHaveBeenCalled();
+  });
+
+  it('non-participant cannot get match notification preference', async () => {
+    const { service, prisma } = createService();
+    prisma.match.findUnique.mockResolvedValue({
+      id: 'match-1',
+      createdByUserId: 'creator-1',
+      participants: [],
+    });
+
+    await expect(service.getMatchNotificationPreference('outsider-1', 'match-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

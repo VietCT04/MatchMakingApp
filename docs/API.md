@@ -345,6 +345,35 @@ Rules:
 - sending is blocked for cancelled matches
 - `body` is required, min length 1, max length 1000
 
+### `GET /matches/:id/chat/unread-count`
+Requires `Authorization: Bearer <token>`.
+
+Response:
+```json
+{
+  "count": 3
+}
+```
+
+Rules:
+- only match creator or participants can access
+- counts messages after `lastReadAt`
+- excludes current user's own messages
+
+### `PATCH /matches/:id/chat/read`
+Requires `Authorization: Bearer <token>`.
+
+Response:
+```json
+{
+  "success": true
+}
+```
+
+Rules:
+- only match creator or participants can mark read
+- updates per-user read state for the match chat
+
 ## Reliability Endpoints
 ### `GET /me/reliability`
 Requires `Authorization: Bearer <token>`.
@@ -495,9 +524,18 @@ Request (all optional):
   "chatMessages": true,
   "results": true,
   "trustSafety": true,
-  "ratingUpdates": true
+  "ratingUpdates": true,
+  "quietHoursEnabled": true,
+  "quietHoursStart": "22:00",
+  "quietHoursEnd": "08:00",
+  "timezone": "Asia/Singapore"
 }
 ```
+
+Quiet-hours validation:
+- when `quietHoursEnabled=true`, `quietHoursStart` and `quietHoursEnd` are required
+- `quietHoursStart` and `quietHoursEnd` use `HH:mm` format
+- `timezone` is optional (defaults to `Asia/Singapore` when not set)
 
 Push preference mapping:
 - `CHAT_MESSAGE` -> `chatMessages`
@@ -506,6 +544,38 @@ Push preference mapping:
 - `DISPUTE_CREATED`, `REPORT_CREATED`, `NO_SHOW_MARKED` -> `trustSafety`
 - `RATING_UPDATED` -> `ratingUpdates`
 - `SYSTEM` -> always allowed
+
+### `GET /matches/:id/notification-preference`
+Requires `Authorization: Bearer <token>`.
+
+Response:
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "matchId": "uuid",
+  "muted": false,
+  "muteUntil": null,
+  "createdAt": "2026-04-27T12:00:00.000Z",
+  "updatedAt": "2026-04-27T12:00:00.000Z"
+}
+```
+
+### `PATCH /matches/:id/notification-preference`
+Requires `Authorization: Bearer <token>`.
+
+Request:
+```json
+{
+  "muted": true,
+  "muteUntil": "2026-04-28T12:00:00.000Z"
+}
+```
+
+Rules:
+- only match creator or participants can read/update this preference
+- `muteUntil` must be a future datetime when provided
+- per-match mute affects push delivery only (in-app notifications still persist)
 
 Mobile usage:
 - The Notifications tab links to `/notification-settings`.

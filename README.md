@@ -23,7 +23,11 @@ Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, an
 - Match-specific chat MVP (REST + polling)
 - In-app notifications MVP (database-backed, JWT protected, read/unread workflow)
 - Expo push notifications MVP (delivery layer built on in-app notifications)
-- Mobile notification preferences UI (users can edit push categories)
+- Notification controls MVP:
+  - global preferences
+  - per-match push mute
+  - quiet hours
+  - chat unread counts
 
 ## Tech Stack
 - Mobile: React Native + Expo + TypeScript + Expo Router
@@ -189,6 +193,8 @@ pnpm typecheck
 - `GET /users/:userId/reliability` returns public reliability summary for a user.
 - `GET /matches/:id/chat/messages` returns match chat messages for match creator/participants.
 - `POST /matches/:id/chat/messages` sends a match chat message for eligible users.
+- `GET /matches/:id/chat/unread-count` returns unread chat message count (excluding own messages).
+- `PATCH /matches/:id/chat/read` marks chat as read for current user.
 - `GET /notifications` returns current-user notifications with read/unread filtering.
 - `GET /notifications/unread-count` returns unread notification count.
 - `PATCH /notifications/:id/read` marks a single notification as read.
@@ -197,7 +203,9 @@ pnpm typecheck
 - `DELETE /push/devices/:expoPushToken` deactivates current-user push token.
 - `GET /push/devices` lists current-user active push devices.
 - `GET /me/notification-preferences` and `PATCH /me/notification-preferences` manage backend push preference flags.
+- `GET /matches/:id/notification-preference` and `PATCH /matches/:id/notification-preference` manage per-match push mute.
 - Notification records remain the source of truth; Expo push is a best-effort delivery channel.
+- Per-match mute and quiet hours affect push delivery only; in-app notification records are still created.
 - Push delivery failures do not block core match/chat/result/trust workflows.
 - `GET /users/:userId/ratings` returns a user's current sport ratings.
 - `GET /users/:userId/rating-history` returns rating change history.
@@ -224,9 +232,10 @@ pnpm typecheck
 - Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
 - Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
 - Match chat screen supports REST polling MVP (open chat from match detail, read/send messages, manual refresh, and periodic refresh while focused).
+- Match chat tracks unread counts and marks messages as read on open.
 - Notifications tab shows unread count, list/read state, mark-all-as-read, and deep-link to match detail when `data.matchId` is present.
 - Notifications tab includes navigation to Notification settings.
-- Notification settings screen (`/notification-settings`) lets users edit and save push preference flags (`matchUpdates`, `chatMessages`, `results`, `trustSafety`, `ratingUpdates`).
+- Notification settings screen (`/notification-settings`) lets users edit and save push preference flags and quiet hours (`HH:mm` fields + timezone).
 - Mobile auth flow now attempts push registration after session restore/login/register and deactivates known token on logout.
 - Push notification tap navigates to match detail when `matchId` exists, otherwise to Notifications tab.
 - Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
@@ -239,8 +248,6 @@ pnpm typecheck
 - Temporary demo-user normal flow has been removed from navigation and match detail behavior.
 
 ## Remaining TODOs
-- Per-match notification mute controls.
-- Quiet hours / do-not-disturb windows.
 - Push receipt analytics and delivery diagnostics UI.
 - Payments.
 - Additional PostGIS tuning for large-scale nearby search (query plans, selective indexes, and operational monitoring).

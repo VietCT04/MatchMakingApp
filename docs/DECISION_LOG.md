@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-04-27: Notification controls MVP (per-match mute, quiet hours, chat unread)
+
+Decision:
+- Add `MatchNotificationPreference` (`userId+matchId` unique) to support per-match push mute controls.
+- Extend `NotificationPreference` with quiet-hours fields:
+  - `quietHoursEnabled`
+  - `quietHoursStart` (`HH:mm`)
+  - `quietHoursEnd` (`HH:mm`)
+  - `timezone`
+- Add `ChatReadState` (`userId+matchId` unique) for REST-based unread chat counts.
+- Add APIs:
+  - `GET/PATCH /matches/:id/notification-preference`
+  - `GET /matches/:id/chat/unread-count`
+  - `PATCH /matches/:id/chat/read`
+- Keep `Notification` rows as source of truth while applying mute/quiet-hours at push delivery time only.
+
+Reasoning:
+- Users need granular notification control without losing durable in-app event history.
+- Quiet hours and per-match mute reduce push fatigue but should not hide data from in-app timeline.
+- Chat unread state can be solved with simple REST persistence for MVP without websocket infrastructure.
+
+Follow-up:
+- Add per-match in-app notification visibility filters (optional future enhancement).
+- Add push receipts analytics + delivery diagnostics.
+- Add websocket realtime unread state sync when realtime chat is introduced.
+
 ## 2026-04-27: PostGIS-based nearby match discovery
 
 Decision:
