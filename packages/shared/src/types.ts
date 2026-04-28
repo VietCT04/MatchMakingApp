@@ -77,6 +77,8 @@ export interface UserDto {
   displayName: string;
   bio: string | null;
   homeLocationText: string | null;
+  avatarUrl?: string | null;
+  skillDescription?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -155,9 +157,50 @@ export interface MatchWithDetailsDto extends MatchDto {
     distanceScore: number;
     ratingFitScore: number;
     reliabilityScore: number;
+    preferenceScore: number;
     timeScore: number;
     slotAvailabilityScore: number;
   };
+}
+
+export interface UserSportPreferenceDto {
+  id: string;
+  userId: string;
+  sportId: string;
+  prefersSingles: boolean;
+  prefersDoubles: boolean;
+  minPreferredRating: number | null;
+  maxPreferredRating: number | null;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserPreferredVenueDto {
+  id: string;
+  userId: string;
+  venueId: string;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserAvailabilitySlotDto {
+  id: string;
+  userId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MyPreferencesDto {
+  profile: UserDto;
+  sportPreferences: UserSportPreferenceDto[];
+  preferredVenues: UserPreferredVenueDto[];
+  availability: UserAvailabilitySlotDto[];
 }
 
 export interface ReliabilityStatsDto {

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchParticipantStatus, MatchStatus, Prisma, SportFormat } from '@prisma/client';
 import { calculateDistanceKm } from '../common/geo/haversine';
+import { PreferencesService } from '../preferences/preferences.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchRankingService } from './match-ranking.service';
 import { MatchQueryDto } from './dto.match-query';
@@ -11,6 +12,7 @@ export class MatchQueryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matchRankingService: MatchRankingService,
+    private readonly preferencesService: PreferencesService,
   ) {}
 
   async findAll(query: MatchQueryDto = {}, userId?: string) {
@@ -80,8 +82,16 @@ export class MatchQueryService {
       );
     }
 
-    const userRatingsBySportFormat = await this.getUserRatingsBySportAndFormat(userId, withDistanceAndAvailability);
-    return this.enrichAndRankMatches(withDistanceAndAvailability, userRatingsBySportFormat, query.radiusKm);
+    const [userRatingsBySportFormat, rankingPreferences] = await Promise.all([
+      this.getUserRatingsBySportAndFormat(userId, withDistanceAndAvailability),
+      userId ? this.preferencesService.getRankingPreferences(userId) : Promise.resolve(undefined),
+    ]);
+    return this.enrichAndRankMatches(
+      withDistanceAndAvailability,
+      userRatingsBySportFormat,
+      query.radiusKm,
+      rankingPreferences,
+    );
   }
 
   async findOne(id: string) {
@@ -224,7 +234,9 @@ export class MatchQueryService {
   }
 
   private enrichAndRankMatches<T extends {
+    id: string;
     sportId: string;
+    venueId: string | null;
     format: SportFormat;
     minRating: number | null;
     maxRating: number | null;
@@ -239,6 +251,16 @@ export class MatchQueryService {
     matches: T[],
     userRatingsBySportFormat: Map<string, number>,
     radiusKm?: number,
+    rankingPreferences?: {
+      sportPreferences: Array<{
+        sportId: string;
+        prefersSingles: boolean;
+        prefersDoubles: boolean;
+      }>;
+      preferredVenues: Array<{ venueId: string }>;
+      availability: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
+      hasPreferences: boolean;
+    },
   ) {
     return matches
       .map((match) => {
@@ -254,11 +276,13 @@ export class MatchQueryService {
           }, 0) / joinedParticipantCount;
         const ratingKey = this.toSportFormatKey(match.sportId, match.format);
         const userRating = userRatingsBySportFormat.get(ratingKey) ?? this.matchRankingService.getDefaultRating();
+        const preferenceScore = this.calculatePreferenceScore(match, rankingPreferences);
         const fit = this.matchRankingService.calculateFitScore({
           distanceKm: match.distanceKm,
           radiusKm,
           userRating,
           reliabilityScore: Number(matchReliabilityScore.toFixed(2)),
+          preferenceScore,
           minRating: match.minRating,
           maxRating: match.maxRating,
           startsAt: match.startsAt,
@@ -273,6 +297,73 @@ export class MatchQueryService {
         };
       })
       .sort((a, b) => b.fitScore - a.fitScore || a.startsAt.getTime() - b.startsAt.getTime());
+  }
+
+  private calculatePreferenceScore(
+    match: {
+      sportId: string;
+      venueId: string | null;
+      format: SportFormat;
+      startsAt: Date;
+    },
+    rankingPreferences?: {
+      sportPreferences: Array<{
+        sportId: string;
+        prefersSingles: boolean;
+        prefersDoubles: boolean;
+      }>;
+      preferredVenues: Array<{ venueId: string }>;
+      availability: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
+      hasPreferences: boolean;
+    },
+  ): number {
+    if (!rankingPreferences || !rankingPreferences.hasPreferences) {
+      return 50;
+    }
+
+    let score = 40;
+    const sportPreference = rankingPreferences.sportPreferences.find((item) => item.sportId === match.sportId);
+    if (sportPreference) {
+      score += 30;
+      const formatMatches =
+        (match.format === SportFormat.SINGLES && sportPreference.prefersSingles) ||
+        (match.format === SportFormat.DOUBLES && sportPreference.prefersDoubles);
+      if (formatMatches) {
+        score += 15;
+      }
+    }
+
+    if (match.venueId && rankingPreferences.preferredVenues.some((item) => item.venueId === match.venueId)) {
+      score += 10;
+    }
+
+    if (this.matchOverlapsAvailability(match.startsAt, rankingPreferences.availability)) {
+      score += 15;
+    }
+
+    return Number(Math.min(100, Math.max(0, score)).toFixed(2));
+  }
+
+  private matchOverlapsAvailability(
+    startsAt: Date,
+    availability: Array<{ dayOfWeek: number; startTime: string; endTime: string }>,
+  ): boolean {
+    if (availability.length === 0) {
+      return false;
+    }
+    const matchDay = startsAt.getDay();
+    const matchMinutes = startsAt.getHours() * 60 + startsAt.getMinutes();
+
+    return availability.some((slot) => {
+      if (slot.dayOfWeek !== matchDay) {
+        return false;
+      }
+      const [startHour, startMinute] = slot.startTime.split(':').map((value) => Number(value));
+      const [endHour, endMinute] = slot.endTime.split(':').map((value) => Number(value));
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+      return matchMinutes >= startMinutes && matchMinutes < endMinutes;
+    });
   }
 
   private async findAllNearbyWithDistance(

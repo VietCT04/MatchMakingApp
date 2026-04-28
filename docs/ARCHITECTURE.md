@@ -133,3 +133,9 @@ apps/mobile/app/
 - [Database](./DATABASE.md)
 - [Rating System](./RATING_SYSTEM.md)
 - [Roadmap](./ROADMAP.md)
+
+## Preferences personalization layer
+- Added PreferencesModule for profile personalization and preference CRUD.
+- Ranking pipeline remains in MatchRankingService and MatchQueryService; preference signals are fetched from PreferencesService during ranked discovery only.
+- No API contract changes were required for discovery clients beyond reading itBreakdown.preferenceScore when present.
+

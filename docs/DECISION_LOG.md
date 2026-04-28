@@ -326,3 +326,10 @@ Reasoning:
 Follow-up:
 - Add refresh tokens or session revocation before production.
 - Add email verification, password reset, and stronger abuse controls.
+
+## 2026-04-28: Rule-based personalization signals in ranking
+- Decision: add explicit user preference models and a deterministic preferenceScore to ranked discovery.
+- Reason: improve recommendation quality without introducing AI/black-box behavior.
+- Outcome: ranking now combines distance, rating, reliability, preference, time, and slot signals with documented weights.
+- Tradeoff: weekly availability matching is simple (dayOfWeek + HH:mm) and does not yet handle advanced timezone/calendar semantics.
+

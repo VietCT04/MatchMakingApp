@@ -55,6 +55,8 @@ export class UsersService {
       displayName: true,
       bio: true,
       homeLocationText: true,
+      avatarUrl: true,
+      skillDescription: true,
       createdAt: true,
       updatedAt: true,
     } as const;

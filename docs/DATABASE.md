@@ -248,3 +248,11 @@ pnpm prisma:seed
 ## Related Docs
 - [Architecture](./ARCHITECTURE.md)
 - [API](./API.md)
+
+## New preference models (2026-04-28)
+- UserSportPreference (unique userId + sportId)
+- UserPreferredVenue (unique userId + venueId)
+- UserAvailabilitySlot (dayOfWeek, startTime, endTime, 	imezone)
+- User now includes optional vatarUrl and skillDescription.
+- Sport now includes reverse relation userSportPreferences.
+

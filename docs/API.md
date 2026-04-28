@@ -768,3 +768,31 @@ Validation errors (from `ValidationPipe`) typically return:
 - Map discovery uses the same nearby ranked request (`GET /matches` with `status=OPEN`, `latitude`, `longitude`, `radiusKm`, `ranked=true`) and relies on `venue.latitude/longitude` for marker placement.
 - Mobile auth flow attempts push-token registration after login/register/session restore.
 - Mobile logout attempts to deactivate known push token via `DELETE /push/devices/:expoPushToken`.
+
+## Profile and Preferences APIs
+PATCH /me/profile (JWT)
+- Body: { displayName, bio?, homeLocationText?, avatarUrl?, skillDescription? }`n- Validation: displayName 2-80, bio <=500, homeLocationText <=120.
+
+GET /me/preferences (JWT)
+- Returns { profile, sportPreferences, preferredVenues, availability }.
+
+PATCH /me/preferences/sports (JWT)
+- Replaces all sport preferences.
+- Body: { sports: [{ sportId, prefersSingles, prefersDoubles, minPreferredRating?, maxPreferredRating?, priority? }] }`n
+PATCH /me/preferences/venues (JWT)
+- Replaces all preferred venues.
+- Body: { venues: [{ venueId, priority? }] }`n
+PATCH /me/preferences/availability (JWT)
+- Replaces weekly availability.
+- Body: { availability: [{ dayOfWeek, startTime, endTime, timezone? }] }`n
+## Ranked Fit Formula (updated)
+itScore =
+- distanceScore * 0.25
+- atingFitScore * 0.25
+- eliabilityScore * 0.15
+- preferenceScore * 0.20
+- 	imeScore * 0.10
+- slotAvailabilityScore * 0.05
+
+preferenceScore is rule-based and boosts for matching sport/format, preferred venue, and weekly availability overlap; defaults to neutral 50 with no preferences.
+

@@ -314,3 +314,11 @@ curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results/
 ```
 
 Backend integration coverage for this flow lives in `apps/api/src/matches/match-flow.integration.spec.ts`.
+
+## Player Profile and Preferences (MVP)
+- Players can edit profile via PATCH /me/profile (display name, bio, home location text, optional avatar URL and skill description).
+- Players can manage preferences via /me/preferences endpoints for sports/formats, preferred venues, and weekly recurring availability.
+- Ranked discovery now includes preferenceScore in itBreakdown and uses rule-based personalization (no AI).
+- Mobile includes Profile editing and a Player preferences screen to save sports, venue, and availability signals.
+- Weekly availability is recurring MVP data (dayOfWeek + HH:mm); no calendar sync yet.
+

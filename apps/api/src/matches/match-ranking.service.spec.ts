@@ -30,6 +30,7 @@ describe('MatchRankingService', () => {
         radiusKm: 10,
         userRating: 1250,
         reliabilityScore: 95,
+        preferenceScore: 90,
         minRating: 1200,
         maxRating: 1300,
         startsAt: new Date('2026-04-26T04:00:00.000Z'),
@@ -43,10 +44,11 @@ describe('MatchRankingService', () => {
       distanceScore: 80,
       ratingFitScore: 100,
       reliabilityScore: 95,
+      preferenceScore: 90,
       timeScore: 90,
       slotAvailabilityScore: 77.5,
     });
-    expect(result.fitScore).toBe(89.75);
+    expect(result.fitScore).toBe(90.13);
   });
 
   it('gives lower fit score when reliability is lower', () => {
@@ -57,6 +59,7 @@ describe('MatchRankingService', () => {
         radiusKm: 10,
         userRating: 1250,
         reliabilityScore: 95,
+        preferenceScore: 90,
         minRating: 1200,
         maxRating: 1300,
         startsAt: new Date('2026-04-26T04:00:00.000Z'),
@@ -71,6 +74,7 @@ describe('MatchRankingService', () => {
         radiusKm: 10,
         userRating: 1250,
         reliabilityScore: 40,
+        preferenceScore: 90,
         minRating: 1200,
         maxRating: 1300,
         startsAt: new Date('2026-04-26T04:00:00.000Z'),

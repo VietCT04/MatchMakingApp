@@ -12,9 +12,10 @@ import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { ReliabilityModule } from '../reliability/reliability.module';
 import { MatchDisputeService } from './match-dispute.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PreferencesModule } from '../preferences/preferences.module';
 
 @Module({
-  imports: [RatingsModule, ReliabilityModule, NotificationsModule],
+  imports: [RatingsModule, ReliabilityModule, NotificationsModule, PreferencesModule],
   controllers: [MatchesController],
   providers: [
     MatchesService,

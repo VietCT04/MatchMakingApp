@@ -182,6 +182,9 @@ export default function DiscoverScreen() {
               {match.fitBreakdown?.reliabilityScore !== undefined ? (
                 <Badge>{Math.round(match.fitBreakdown.reliabilityScore)} reliability</Badge>
               ) : null}
+              {match.fitBreakdown?.preferenceScore !== undefined ? (
+                <Badge tone="info">Preference fit: {Math.round(match.fitBreakdown.preferenceScore)}</Badge>
+              ) : null}
             </View>
           </AppCard>
         );

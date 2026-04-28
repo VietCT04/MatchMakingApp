@@ -87,6 +87,8 @@ model User {
   displayName      String
   bio              String?
   homeLocationText String?
+  avatarUrl        String?
+  skillDescription String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -109,6 +111,9 @@ model User {
   matchNotificationPreferences MatchNotificationPreference[]
   chatReadStates ChatReadState[]
   moderationActions ModerationAction[] @relation("ModerationBy")
+  sportPreferences UserSportPreference[]
+  preferredVenues UserPreferredVenue[]
+  availabilitySlots UserAvailabilitySlot[]
 }
 
 model Sport {
@@ -120,6 +125,7 @@ model Sport {
   matches       Match[]
   userRatings   UserSportRating[]
   ratingHistory RatingHistory[]
+  userSportPreferences UserSportPreference[]
 }
 
 model UserSportRating {
@@ -149,6 +155,56 @@ model Venue {
   updatedAt DateTime @updatedAt
 
   matches   Match[]
+  preferredByUsers UserPreferredVenue[]
+}
+
+model UserSportPreference {
+  id                 String   @id @default(uuid())
+  userId             String
+  sportId            String
+  prefersSingles     Boolean  @default(true)
+  prefersDoubles     Boolean  @default(true)
+  minPreferredRating Int?
+  maxPreferredRating Int?
+  priority           Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sport              Sport    @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sportId])
+  @@index([userId, priority])
+}
+
+model UserPreferredVenue {
+  id        String   @id @default(uuid())
+  userId    String
+  venueId   String
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId])
+  @@index([userId, priority])
+}
+
+model UserAvailabilitySlot {
+  id        String   @id @default(uuid())
+  userId    String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  timezone  String   @default("Asia/Singapore")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dayOfWeek, startTime])
 }
 
 model Match {

@@ -69,6 +69,14 @@ function createMatch(
 
 describe('MatchQueryService nearby filtering', () => {
   const rankingService = new MatchRankingService();
+  const preferenceService = {
+    getRankingPreferences: jest.fn().mockResolvedValue({
+      sportPreferences: [],
+      preferredVenues: [],
+      availability: [],
+      hasPreferences: false,
+    }),
+  };
 
   it('includes matches within radius and adds distanceKm', async () => {
     const prisma = {
@@ -81,7 +89,7 @@ describe('MatchQueryService nearby filtering', () => {
         ]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll({
       latitude: 1.3002,
@@ -107,7 +115,7 @@ describe('MatchQueryService nearby filtering', () => {
         ]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll({
       latitude: 1.3002,
@@ -124,7 +132,7 @@ describe('MatchQueryService nearby filtering', () => {
         findMany: jest.fn().mockResolvedValue([createMatch('plain', 1.3001, 103.8002, '2026-05-01T10:00:00.000Z')]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll({});
 
@@ -138,7 +146,7 @@ describe('MatchQueryService nearby filtering', () => {
         findMany: jest.fn(),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     await expect(
       service.findAll({
@@ -186,7 +194,15 @@ describe('MatchQueryService nearby filtering', () => {
         ]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    preferenceService.getRankingPreferences.mockResolvedValueOnce({
+      sportPreferences: [
+        { sportId: 'sport-1', prefersSingles: false, prefersDoubles: true },
+      ],
+      preferredVenues: [{ venueId: 'venue-1' }],
+      availability: [{ dayOfWeek: 5, startTime: '08:00', endTime: '13:00' }],
+      hasPreferences: true,
+    });
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll(
       {
@@ -204,6 +220,7 @@ describe('MatchQueryService nearby filtering', () => {
     expect(result.map((match) => match.id)).toEqual(['best', 'medium', 'low']);
     expect(result.every((match) => 'fitBreakdown' in match)).toBe(true);
     expect((result[0] as any).fitBreakdown.reliabilityScore).toBe(95);
+    expect((result[0] as any).fitBreakdown.preferenceScore).toBeGreaterThan(50);
     expect((result[2] as any).fitBreakdown.reliabilityScore).toBeLessThan((result[0] as any).fitBreakdown.reliabilityScore);
   });
 
@@ -227,13 +244,14 @@ describe('MatchQueryService nearby filtering', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll({ ranked: true });
 
     expect(result).toHaveLength(2);
     expect(result.every((match) => (match as any).fitScore !== undefined)).toBe(true);
     expect(result.every((match) => (match as any).distanceKm === undefined)).toBe(true);
+    expect(result.every((match) => (match as any).fitBreakdown.preferenceScore === 50)).toBe(true);
   });
 
   it('falls back to app-layer distance when PostGIS functions are unavailable', async () => {
@@ -246,7 +264,7 @@ describe('MatchQueryService nearby filtering', () => {
         ]),
       },
     };
-    const service = new MatchQueryService(prisma as any, rankingService);
+    const service = new MatchQueryService(prisma as any, rankingService, preferenceService as any);
 
     const result = await service.findAll({
       latitude: 1.3002,

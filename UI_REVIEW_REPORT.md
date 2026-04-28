@@ -641,3 +641,9 @@ This section tracks what has been implemented from this review, and what is stil
 - [ ] Full componentization pass for all existing screens (some screens are still mixed with local styles).
 - [ ] Advanced notification controls (per-match mute and quiet hours).
 - [ ] Push receipt analytics visibility in UI.
+
+## Update - Implemented: Profile and Preferences
+- Added editable profile UX in mobile Profile screen (display name, bio, home location text + save feedback).
+- Added dedicated Player Preferences screen with sections for sports/formats, preferred venues, and weekly availability.
+- Added Discover card signal for Preference fit when ranked response includes itBreakdown.preferenceScore.
+- Not yet done in this slice: avatar upload/file picker UX, advanced availability editor, and calendar integration.

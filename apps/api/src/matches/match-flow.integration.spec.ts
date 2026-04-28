@@ -17,6 +17,7 @@ import { MatchResultSubmissionService } from './match-result-submission.service'
 import { ReliabilityService } from '../reliability/reliability.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import { PreferencesService } from '../preferences/preferences.service';
 
 const sportId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const venueId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -33,7 +34,8 @@ describeIntegration('MVP match flow integration', () => {
   const reliabilityService = new ReliabilityService(prisma);
   const pushService = new PushService(prisma);
   const notificationsService = new NotificationsService(prisma, pushService);
-  const queryService = new MatchQueryService(prisma, rankingService);
+  const preferencesService = new PreferencesService(prisma);
+  const queryService = new MatchQueryService(prisma, rankingService, preferencesService);
   const lifecycleService = new MatchLifecycleService(prisma, queryService);
   const participationService = new MatchParticipationService(
     prisma,

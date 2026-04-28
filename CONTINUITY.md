@@ -320,3 +320,13 @@ pnpm typecheck
 - Keep the scaffold simple and extensible.
 - Do not implement payment, maps, or AI matchmaking unless specifically requested.
 - Update `CONTINUITY.md` after every major code change.
+
+## 2026-04-28 - Profile and preferences personalization
+- Added user profile edit endpoint PATCH /me/profile for displayName, io, homeLocationText, optional vatarUrl, skillDescription.
+- Added preference models and APIs for sports, preferred venues, and weekly availability.
+- Added PreferencesModule (/me/preferences, /me/preferences/sports, /me/preferences/venues, /me/preferences/availability).
+- Match ranking now includes preferenceScore and uses updated weighted fit formula.
+- Discover UI now shows preference fit when ranked data includes itBreakdown.preferenceScore.
+- Mobile profile now supports inline profile editing and links to dedicated player preferences screen.
+- Added backend tests for preference validation/service behavior and updated ranking tests.
+- Remaining TODOs: calendar sync, per-slot timezone UX improvements, AI recommendations (out of scope).

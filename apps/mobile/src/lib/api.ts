@@ -9,6 +9,7 @@ import type {
   MatchResultDisputeDto,
   MatchResultDto,
   MatchWithDetailsDto,
+  MyPreferencesDto,
   ReportStatus,
   NotificationPreferenceDto,
   NotificationDto,
@@ -21,6 +22,9 @@ import type {
   SportDto,
   UserReportDto,
   UserDto,
+  UserSportPreferenceDto,
+  UserPreferredVenueDto,
+  UserAvailabilitySlotDto,
   VenueDto,
 } from '@sports-matchmaking/shared';
 import { API_BASE_URL } from '../config/api';
@@ -90,6 +94,14 @@ export type RegisterPushDeviceInput = {
   expoPushToken: string;
   platform?: PushDevicePlatform;
   deviceName?: string;
+};
+
+export type UpdateMyProfileInput = {
+  displayName: string;
+  bio?: string;
+  homeLocationText?: string;
+  avatarUrl?: string;
+  skillDescription?: string;
 };
 
 export type ModerationReportsParams = {
@@ -434,6 +446,50 @@ export const apiClient = {
 
   getMyReliability(): Promise<ReliabilityStatsDto> {
     return request('/me/reliability');
+  },
+
+  updateMyProfile(payload: UpdateMyProfileInput): Promise<UserDto> {
+    return request('/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getMyPreferences(): Promise<MyPreferencesDto> {
+    return request('/me/preferences');
+  },
+
+  updateSportPreferences(payload: { sports: Array<{
+    sportId: string;
+    prefersSingles: boolean;
+    prefersDoubles: boolean;
+    minPreferredRating?: number;
+    maxPreferredRating?: number;
+    priority?: number;
+  }> }): Promise<UserSportPreferenceDto[]> {
+    return request('/me/preferences/sports', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updatePreferredVenues(payload: { venues: Array<{ venueId: string; priority?: number }> }): Promise<UserPreferredVenueDto[]> {
+    return request('/me/preferences/venues', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateAvailability(payload: { availability: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    timezone?: string;
+  }> }): Promise<UserAvailabilitySlotDto[]> {
+    return request('/me/preferences/availability', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
 
   getUserReliability(userId: string): Promise<ReliabilityStatsDto> {
