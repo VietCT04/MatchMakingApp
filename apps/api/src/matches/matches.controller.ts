@@ -37,13 +37,15 @@ export class MatchesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateMatchDto) {
-    return this.matchesService.update(id, dto);
+  @UseGuards(JwtAuthGuard)
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateMatchDto) {
+    return this.matchesService.updateForUser(id, user, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.matchesService.remove(id);
+  @UseGuards(JwtAuthGuard)
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.matchesService.removeForUser(id, user);
   }
 
   @Post(':id/join')

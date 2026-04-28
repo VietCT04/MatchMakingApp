@@ -13,8 +13,8 @@ describe('MatchesController auth identity handling', () => {
       submitResultForUser: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
-      update: jest.fn(),
-      remove: jest.fn(),
+      updateForUser: jest.fn(),
+      removeForUser: jest.fn(),
     };
     const verificationService = {
       verify: jest.fn(),
@@ -68,5 +68,25 @@ describe('MatchesController auth identity handling', () => {
     controller.verifyResult(authUser, 'match-id', 'result-id');
 
     expect(verificationService.verify).toHaveBeenCalledWith('match-id', 'result-id', authUser.id);
+  });
+
+  it('updates as the JWT user', () => {
+    const { controller, matchesService } = createController();
+
+    controller.update(authUser, 'match-id', { title: 'Updated match' });
+
+    expect(matchesService.updateForUser).toHaveBeenCalledWith(
+      'match-id',
+      authUser,
+      expect.objectContaining({ title: 'Updated match' }),
+    );
+  });
+
+  it('removes as the JWT user', () => {
+    const { controller, matchesService } = createController();
+
+    controller.remove(authUser, 'match-id');
+
+    expect(matchesService.removeForUser).toHaveBeenCalledWith('match-id', authUser);
   });
 });

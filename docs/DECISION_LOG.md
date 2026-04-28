@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-04-28: Secure match update/delete and reduce orchestration hotspots
+
+Decision:
+- Protect `PATCH /matches/:id` and `DELETE /matches/:id` with JWT.
+- Enforce owner/role authorization in service layer:
+  - creator, `MODERATOR`, `ADMIN` allowed
+  - non-owner `USER` forbidden
+- Convert delete behavior to soft-cancel (`status=CANCELLED`) instead of hard delete.
+- Restrict completed-match cancellation to `ADMIN` only.
+- Make reliability GET behavior read-only:
+  - no upsert side effects
+  - return default summary when stats row is missing
+- Remove duplicated mobile API methods for notification preferences and keep one canonical pair.
+- Extract action/permission orchestration from match detail screen into `useMatchDetailActions`.
+- Split `match-query.service` with focused helper methods for response mapping and ranking enrichment.
+
+Reasoning:
+- Closes high-priority authorization gaps on match mutation endpoints.
+- Improves safety by avoiding destructive delete in MVP.
+- Keeps GET semantics read-only for reliability endpoints.
+- Reduces maintenance risk in large hotspot files without changing product behavior.
+
 ## 2026-04-27: Elo rollback and reapply for corrected disputes (match-level MVP)
 
 Decision:

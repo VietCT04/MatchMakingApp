@@ -81,7 +81,11 @@ export class ReliabilityService {
   }
 
   async toSummaryByUserId(userId: string, tx?: Prisma.TransactionClient) {
-    const stats = await this.getOrCreateByUserId(userId, tx);
+    const client = tx ?? this.prisma;
+    const stats = await client.userReliabilityStats.findUnique({ where: { userId } });
+    if (!stats) {
+      return this.defaultSummary(userId);
+    }
     return this.toSummary(stats);
   }
 
@@ -118,6 +122,19 @@ export class ReliabilityService {
       disputedResults: stats.disputedResults,
       reportCount: stats.reportCount,
       reliabilityScore: stats.reliabilityScore,
+    };
+  }
+
+  private defaultSummary(userId: string) {
+    return {
+      userId,
+      completedMatches: 0,
+      cancelledMatches: 0,
+      lateCancellationCount: 0,
+      noShowCount: 0,
+      disputedResults: 0,
+      reportCount: 0,
+      reliabilityScore: DEFAULT_RELIABILITY_SCORE,
     };
   }
 }

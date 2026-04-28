@@ -223,7 +223,20 @@ Example request:
 ```
 
 ### `PATCH /matches/:id`
+Requires `Authorization: Bearer <token>`.
+
+Rules:
+- only match creator, `ADMIN`, or `MODERATOR` can update
+- non-owner `USER` is forbidden
+- `createdByUserId` cannot be reassigned via update payload
+
 ### `DELETE /matches/:id`
+Requires `Authorization: Bearer <token>`.
+
+Current MVP behavior:
+- performs protected soft-cancel (`status = CANCELLED`) instead of hard delete
+- only match creator, `ADMIN`, or `MODERATOR` can cancel
+- completed matches can only be cancelled by `ADMIN`
 
 ### `POST /matches/:id/participants`
 Status: legacy alias for joining a match.
@@ -406,6 +419,7 @@ Example response:
 Reliability formula:
 - `reliabilityScore = clamp(0, 100, 100 - noShowCount*10 - lateCancellationCount*5 - disputedResults*5 - reportCount*3)`
 - Reliability is separate from Elo and does not affect rating history math.
+- `GET /me/reliability` and `GET /users/:userId/reliability` are read-only and do not create DB rows; missing stats return default summary values.
 
 ## Reports Endpoints
 ### `POST /reports/users`

@@ -34,12 +34,12 @@ export class MatchesService {
     return this.lifecycleService.createForUser(userId, dto);
   }
 
-  update(id: string, dto: UpdateMatchDto) {
-    return this.lifecycleService.update(id, dto);
+  updateForUser(id: string, user: AuthUser, dto: UpdateMatchDto) {
+    return this.lifecycleService.updateForUser(id, user, dto);
   }
 
-  remove(id: string) {
-    return this.lifecycleService.remove(id);
+  removeForUser(id: string, user: AuthUser) {
+    return this.lifecycleService.removeForUser(id, user);
   }
 
   joinForUser(matchId: string, userId: string, dto: JoinMatchDto) {

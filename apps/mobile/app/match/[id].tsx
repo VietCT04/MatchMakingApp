@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { MatchParticipantStatus, MatchStatus, Team } from '@sports-matchmaking/shared';
+import { MatchStatus, Team } from '@sports-matchmaking/shared';
 import { useAuth } from '../../src/auth/AuthContext';
 import { apiClient } from '../../src/lib/api';
 import { useMatchDetail } from '../../src/hooks/useMatchDetail';
+import { useMatchDetailActions } from '../../src/hooks/useMatchDetailActions';
 import { Screen } from '../../src/components/Screen';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { AppCard } from '../../src/components/ui/AppCard';
@@ -20,8 +21,6 @@ import { MatchResultCard } from '../../src/components/match/MatchResultCard';
 import { TrustSafetyPanel } from '../../src/components/match/TrustSafetyPanel';
 import { colors } from '../../src/components/ui/tokens';
 
-type FeedbackTone = 'success' | 'error';
-
 export default function MatchDetailScreen() {
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,25 +30,45 @@ export default function MatchDetailScreen() {
   const [teamBScore, setTeamBScore] = useState('17');
   const [disputeReason, setDisputeReason] = useState('Score is incorrect');
   const [reportReason, setReportReason] = useState('No show without notice');
-  const [busy, setBusy] = useState(false);
-  const [notificationBusy, setNotificationBusy] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: FeedbackTone; message: string } | null>(null);
-  const [disputedResultIds, setDisputedResultIds] = useState<string[]>([]);
-  const [isMatchMuted, setIsMatchMuted] = useState(false);
-  const [muteUntil, setMuteUntil] = useState<string | null>(null);
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const {
+    busy,
+    notificationBusy,
+    feedback,
+    isMatchMuted,
+    muteUntil,
+    chatUnreadCount,
+    joinedParticipants,
+    joinedParticipantCount,
+    currentParticipant,
+    pendingResult,
+    hasDisputedCurrentResult,
+    canJoin,
+    canLeave,
+    canSubmitResult,
+    canVerifyResult: canVerify,
+    canDispute,
+    canMarkNoShow: canMarkNoShowBase,
+    canReadChat,
+    runAction,
+    submitResult,
+    verifyResult,
+    disputeResult,
+    reportUser,
+    markNoShow,
+    setMatchMute,
+    loadNotificationControls,
+    canMarkNoShowForParticipant,
+  } = useMatchDetailActions({
+    matchId,
+    match,
+    user,
+    refresh,
+  });
 
-  const now = Date.now();
   const participants = match?.participants ?? [];
-
-  const joinedParticipants = useMemo(
-    () => participants.filter((item) => item.status === MatchParticipantStatus.JOINED),
-    [participants],
-  );
   const teamAPlayers = participants.filter((item) => item.team === Team.A);
   const teamBPlayers = participants.filter((item) => item.team === Team.B);
   const unknownPlayers = participants.filter((item) => item.team === Team.UNKNOWN);
-  const joinedParticipantCount = joinedParticipants.length;
 
   const participantNameByUserId = useMemo(
     () =>
@@ -70,139 +89,11 @@ export default function MatchDetailScreen() {
     return total / joinedParticipants.length;
   }, [joinedParticipants, match?.fitBreakdown?.reliabilityScore]);
 
-  const currentParticipant = joinedParticipants.find((item) => item.userId === user?.id);
-  const currentUserParticipation = participants.find((item) => item.userId === user?.id);
-  const pendingResult = match?.result ?? null;
-  const hasDisputedCurrentResult = pendingResult?.id ? disputedResultIds.includes(pendingResult.id) : false;
-
-  const isOpen = match?.status === MatchStatus.OPEN;
-  const hasStarted = (match?.startsAt ? new Date(match.startsAt).getTime() : Number.MAX_SAFE_INTEGER) <= now;
-  const canJoin =
-    Boolean(user) &&
-    isOpen &&
-    !currentParticipant &&
-    joinedParticipantCount < (match?.maxPlayers ?? 0);
-  const canLeave =
-    Boolean(currentParticipant) &&
-    match?.status !== MatchStatus.COMPLETED &&
-    match?.status !== MatchStatus.CANCELLED;
-  const canSubmitResult = Boolean(currentParticipant) && !pendingResult;
-  const canVerify =
-    Boolean(currentParticipant) &&
-    Boolean(pendingResult) &&
-    !pendingResult?.verified &&
-    pendingResult?.submittedByUserId !== user?.id;
-  const canDispute =
-    Boolean(currentParticipant) &&
-    Boolean(pendingResult) &&
-    !pendingResult?.verified;
-  const canMarkNoShowBase =
-    Boolean(user && match && match.createdByUserId === user.id && hasStarted) &&
-    match?.status !== MatchStatus.CANCELLED &&
-    match?.status !== MatchStatus.COMPLETED;
-  const canReadChat = Boolean(
-    user &&
-      match &&
-      (match.createdByUserId === user.id || currentUserParticipation),
-  );
-
-  const loadNotificationControls = useCallback(async () => {
-    if (!matchId || !user) {
-      setIsMatchMuted(false);
-      setMuteUntil(null);
-      setChatUnreadCount(0);
-      return;
-    }
-
-    try {
-      const [matchPreference, unread] = await Promise.all([
-        apiClient.getMatchNotificationPreference(matchId),
-        canReadChat ? apiClient.getChatUnreadCount(matchId) : Promise.resolve({ count: 0 }),
-      ]);
-      setIsMatchMuted(matchPreference.muted);
-      setMuteUntil(matchPreference.muteUntil ?? null);
-      setChatUnreadCount(unread.count);
-    } catch {
-      // Keep core match detail usable even if preference/read-state fetch fails.
-    }
-  }, [canReadChat, matchId, user]);
-
   useFocusEffect(
     useCallback(() => {
       void loadNotificationControls();
     }, [loadNotificationControls]),
   );
-
-  function setErrorFeedback(message: string) {
-    setFeedback({ tone: 'error', message });
-  }
-
-  function setSuccessFeedback(message: string) {
-    setFeedback({ tone: 'success', message });
-  }
-
-  async function runAction(action: () => Promise<unknown>, success: string) {
-    setBusy(true);
-    setFeedback(null);
-    try {
-      await action();
-      setSuccessFeedback(success);
-      await refresh();
-    } catch (nextError) {
-      setErrorFeedback(nextError instanceof Error ? nextError.message : 'Action failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitResult() {
-    const parsedA = Number(teamAScore);
-    const parsedB = Number(teamBScore);
-    if (!Number.isInteger(parsedA) || !Number.isInteger(parsedB) || parsedA < 0 || parsedB < 0) {
-      setErrorFeedback('Scores must be non-negative whole numbers.');
-      return;
-    }
-    await runAction(
-      () => apiClient.submitMatchResult(matchId ?? '', { teamAScore: parsedA, teamBScore: parsedB }),
-      'Result submitted. Waiting for another participant to verify.',
-    );
-  }
-
-  async function verifyResult() {
-    const resultId = pendingResult?.id;
-    if (!resultId) {
-      setErrorFeedback('No result available to verify yet.');
-      return;
-    }
-    await runAction(() => apiClient.verifyMatchResult(matchId ?? '', resultId), 'Result verified and ratings updated.');
-  }
-
-  async function disputeResult() {
-    const resultId = pendingResult?.id;
-    if (!resultId) {
-      setErrorFeedback('No result available to dispute yet.');
-      return;
-    }
-
-    setBusy(true);
-    setFeedback(null);
-    try {
-      await apiClient.disputeMatchResult(matchId ?? '', resultId, disputeReason);
-      setDisputedResultIds((prev) => (prev.includes(resultId) ? prev : [...prev, resultId]));
-      setSuccessFeedback('Dispute submitted and marked as OPEN.');
-      await refresh();
-    } catch (nextError) {
-      const message = nextError instanceof Error ? nextError.message : 'Could not submit dispute.';
-      if (message.toLowerCase().includes('duplicate dispute')) {
-        setDisputedResultIds((prev) => (prev.includes(resultId) ? prev : [...prev, resultId]));
-        setErrorFeedback('You already submitted a dispute for this result.');
-      } else {
-        setErrorFeedback(message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
 
   function confirmNoShow(participantId: string, displayName: string) {
     Alert.alert('Mark no-show', `Mark ${displayName} as no-show?`, [
@@ -210,10 +101,7 @@ export default function MatchDetailScreen() {
       {
         text: 'Confirm',
         onPress: () => {
-          void runAction(
-            () => apiClient.markParticipantNoShow(matchId ?? '', participantId),
-            `${displayName} marked as no-show.`,
-          );
+          void markNoShow(participantId, displayName);
         },
       },
     ]);
@@ -226,20 +114,10 @@ export default function MatchDetailScreen() {
         text: 'Report',
         style: 'destructive',
         onPress: () => {
-          void runAction(
-            () => apiClient.reportUser({ reportedUserId, matchId, reason: reportReason }),
-            `Report submitted for ${displayName}.`,
-          );
+          void reportUser(reportedUserId, reportReason);
         },
       },
     ]);
-  }
-
-  function canMarkNoShowForParticipant(participantUserId: string, participantStatus: MatchParticipantStatus): boolean {
-    if (!canMarkNoShowBase || participantUserId === user?.id) {
-      return false;
-    }
-    return participantStatus === MatchParticipantStatus.JOINED;
   }
 
   function toActionHelperText(): string {
@@ -259,33 +137,6 @@ export default function MatchDetailScreen() {
       return 'You are already in this match.';
     }
     return 'No available action right now.';
-  }
-
-  async function setMatchMute(muted: boolean, nextMuteUntil?: string | null) {
-    if (!matchId) {
-      return;
-    }
-    setNotificationBusy(true);
-    setFeedback(null);
-    try {
-      const updated = await apiClient.updateMatchNotificationPreference(matchId, {
-        muted,
-        muteUntil: nextMuteUntil ?? null,
-      });
-      setIsMatchMuted(updated.muted);
-      setMuteUntil(updated.muteUntil);
-      setSuccessFeedback(
-        muted
-          ? nextMuteUntil
-            ? 'Push notifications muted for this match until selected time.'
-            : 'Push notifications muted for this match.'
-          : 'Push notifications unmuted for this match.',
-      );
-    } catch (nextError) {
-      setErrorFeedback(nextError instanceof Error ? nextError.message : 'Could not update match notification preference.');
-    } finally {
-      setNotificationBusy(false);
-    }
   }
 
   function muteUntilTomorrowIso() {
@@ -372,7 +223,7 @@ export default function MatchDetailScreen() {
                   })
                 }
               >
-                {chatUnreadCount > 0 ? `Open chat • ${chatUnreadCount} unread` : 'Open chat'}
+                {chatUnreadCount > 0 ? `Open chat - ${chatUnreadCount} unread` : 'Open chat'}
               </AppButton>
             </AppCard>
           ) : null}
@@ -418,9 +269,9 @@ export default function MatchDetailScreen() {
             onTeamAScoreChange={setTeamAScore}
             onTeamBScoreChange={setTeamBScore}
             onDisputeReasonChange={setDisputeReason}
-            onSubmitResult={() => void submitResult()}
-            onVerifyResult={() => void verifyResult()}
-            onDisputeResult={() => void disputeResult()}
+            onSubmitResult={() => void submitResult(teamAScore, teamBScore)}
+            onVerifyResult={() => void verifyResult(pendingResult)}
+            onDisputeResult={() => void disputeResult(pendingResult, disputeReason)}
             busy={busy}
             submittedByName={
               pendingResult?.submittedByUserId
@@ -450,7 +301,7 @@ export default function MatchDetailScreen() {
             }
             canDisputeResult={canDispute}
             hasDisputed={hasDisputedCurrentResult}
-            onDisputeResult={() => void disputeResult()}
+            onDisputeResult={() => void disputeResult(pendingResult, disputeReason)}
             busy={busy}
           />
         </>

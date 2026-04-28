@@ -70,17 +70,7 @@ export class MatchQueryService {
       .filter((match): match is NonNullable<typeof match> => match !== null);
 
     if (query.ranked !== true) {
-      const normalized = withDistanceAndAvailability.map((match) => ({
-        ...match,
-        participants: match.participants.map((participant) => {
-          const { user, ...participantWithoutUser } = participant;
-          return {
-            ...participantWithoutUser,
-            displayName: participant.user.displayName,
-            reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
-          };
-        }),
-      }));
+      const normalized = this.mapMatchesForResponse(withDistanceAndAvailability);
       if (!hasNearbyFilter) {
         return normalized;
       }
@@ -91,47 +81,7 @@ export class MatchQueryService {
     }
 
     const userRatingsBySportFormat = await this.getUserRatingsBySportAndFormat(userId, withDistanceAndAvailability);
-
-    return withDistanceAndAvailability
-      .map((match) => {
-        const joinedParticipants = match.participants.filter(
-          (participant) => participant.status === MatchParticipantStatus.JOINED,
-        );
-        const joinedParticipantCount = joinedParticipants.length;
-        const matchReliabilityScore = joinedParticipantCount === 0
-          ? 80
-          : joinedParticipants.reduce((sum, participant) => {
-            const reliabilityScore = participant.user.reliabilityStats?.reliabilityScore ?? 100;
-            return sum + reliabilityScore;
-          }, 0) / joinedParticipantCount;
-        const ratingKey = this.toSportFormatKey(match.sportId, match.format);
-        const userRating = userRatingsBySportFormat.get(ratingKey) ?? this.matchRankingService.getDefaultRating();
-        const fit = this.matchRankingService.calculateFitScore({
-          distanceKm: match.distanceKm,
-          radiusKm: query.radiusKm,
-          userRating,
-          reliabilityScore: Number(matchReliabilityScore.toFixed(2)),
-          minRating: match.minRating,
-          maxRating: match.maxRating,
-          startsAt: match.startsAt,
-          participantCount: joinedParticipantCount,
-          maxPlayers: match.maxPlayers,
-        });
-
-        return {
-          ...match,
-          participants: match.participants.map((participant) => {
-            const { user, ...participantWithoutUser } = participant;
-            return {
-              ...participantWithoutUser,
-              displayName: participant.user.displayName,
-              reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
-            };
-          }),
-          ...fit,
-        };
-      })
-      .sort((a, b) => b.fitScore - a.fitScore || a.startsAt.getTime() - b.startsAt.getTime());
+    return this.enrichAndRankMatches(withDistanceAndAvailability, userRatingsBySportFormat, query.radiusKm);
   }
 
   async findOne(id: string) {
@@ -163,14 +113,7 @@ export class MatchQueryService {
     }
     return {
       ...match,
-      participants: match.participants.map((participant) => {
-        const { user, ...participantWithoutUser } = participant;
-        return {
-          ...participantWithoutUser,
-          displayName: participant.user.displayName,
-          reliabilityScore: participant.user.reliabilityStats?.reliabilityScore ?? 100,
-        };
-      }),
+      participants: this.mapParticipantsForResponse(match.participants),
     };
   }
 
@@ -256,6 +199,80 @@ export class MatchQueryService {
       sport: true,
       venue: true,
     } as const;
+  }
+
+  private mapParticipantsForResponse<T extends { user: { displayName: string; reliabilityStats: { reliabilityScore: number } | null } }>(
+    participants: T[],
+  ) {
+    return participants.map((participant) => {
+      const { user, ...participantWithoutUser } = participant;
+      return {
+        ...participantWithoutUser,
+        displayName: user.displayName,
+        reliabilityScore: user.reliabilityStats?.reliabilityScore ?? 100,
+      };
+    });
+  }
+
+  private mapMatchesForResponse<T extends { participants: Array<{ user: { displayName: string; reliabilityStats: { reliabilityScore: number } | null } }> }>(
+    matches: T[],
+  ) {
+    return matches.map((match) => ({
+      ...match,
+      participants: this.mapParticipantsForResponse(match.participants),
+    }));
+  }
+
+  private enrichAndRankMatches<T extends {
+    sportId: string;
+    format: SportFormat;
+    minRating: number | null;
+    maxRating: number | null;
+    startsAt: Date;
+    maxPlayers: number;
+    distanceKm?: number;
+    participants: Array<{
+      status: MatchParticipantStatus;
+      user: { displayName: string; reliabilityStats: { reliabilityScore: number } | null };
+    }>;
+  }>(
+    matches: T[],
+    userRatingsBySportFormat: Map<string, number>,
+    radiusKm?: number,
+  ) {
+    return matches
+      .map((match) => {
+        const joinedParticipants = match.participants.filter(
+          (participant) => participant.status === MatchParticipantStatus.JOINED,
+        );
+        const joinedParticipantCount = joinedParticipants.length;
+        const matchReliabilityScore = joinedParticipantCount === 0
+          ? 80
+          : joinedParticipants.reduce((sum, participant) => {
+            const reliabilityScore = participant.user.reliabilityStats?.reliabilityScore ?? 100;
+            return sum + reliabilityScore;
+          }, 0) / joinedParticipantCount;
+        const ratingKey = this.toSportFormatKey(match.sportId, match.format);
+        const userRating = userRatingsBySportFormat.get(ratingKey) ?? this.matchRankingService.getDefaultRating();
+        const fit = this.matchRankingService.calculateFitScore({
+          distanceKm: match.distanceKm,
+          radiusKm,
+          userRating,
+          reliabilityScore: Number(matchReliabilityScore.toFixed(2)),
+          minRating: match.minRating,
+          maxRating: match.maxRating,
+          startsAt: match.startsAt,
+          participantCount: joinedParticipantCount,
+          maxPlayers: match.maxPlayers,
+        });
+
+        return {
+          ...match,
+          participants: this.mapParticipantsForResponse(match.participants),
+          ...fit,
+        };
+      })
+      .sort((a, b) => b.fitScore - a.fitScore || a.startsAt.getTime() - b.startsAt.getTime());
   }
 
   private async findAllNearbyWithDistance(

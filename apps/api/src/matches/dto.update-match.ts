@@ -12,10 +12,6 @@ export class UpdateMatchDto {
   venueId?: string;
 
   @IsOptional()
-  @IsUUID()
-  createdByUserId?: string;
-
-  @IsOptional()
   @IsString()
   title?: string;
 

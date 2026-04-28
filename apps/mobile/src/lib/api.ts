@@ -398,34 +398,8 @@ export const apiClient = {
     return request('/push/devices');
   },
 
-  getMyNotificationPreferences(): Promise<NotificationPreferenceDto> {
-    return request('/me/notification-preferences');
-  },
-
   getNotificationPreferences(): Promise<NotificationPreferenceDto> {
     return request('/me/notification-preferences');
-  },
-
-  updateMyNotificationPreferences(
-    payload: Partial<
-      Pick<
-        NotificationPreferenceDto,
-        | 'matchUpdates'
-        | 'chatMessages'
-        | 'results'
-        | 'trustSafety'
-        | 'ratingUpdates'
-        | 'quietHoursEnabled'
-        | 'quietHoursStart'
-        | 'quietHoursEnd'
-        | 'timezone'
-      >
-    >,
-  ): Promise<NotificationPreferenceDto> {
-    return request('/me/notification-preferences', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
   },
 
   updateNotificationPreferences(

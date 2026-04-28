@@ -23,6 +23,9 @@
 - Role-based access control is implemented for moderation workflows:
   - `USER` cannot access moderation endpoints
   - `MODERATOR` and `ADMIN` can access moderation endpoints
+- Match mutation endpoints are protected:
+  - `PATCH /matches/:id` requires JWT + owner/admin/moderator authorization
+  - `DELETE /matches/:id` requires JWT + owner/admin/moderator authorization
 - Mobile stores access tokens with Expo SecureStore.
 - Push token registration/deactivation endpoints are JWT-protected and scoped to the current user.
 - Notification listing/read APIs are per-user only; cross-user notification access is blocked.

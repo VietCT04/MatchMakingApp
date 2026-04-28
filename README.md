@@ -190,6 +190,8 @@ pnpm typecheck
 - Ranked fit is rule-based (distance, rating fit, participant reliability, time, slot availability), not AI matchmaking.
 - `POST /matches/:id/join` joins a user, prevents duplicates/full/completed/cancelled matches, and marks a full match as `FULL`.
 - `POST /matches/:id/leave` marks a participant as `LEFT`, tracks cancellation stats, and counts late cancellation if the leave happens within 2 hours of match start.
+- `PATCH /matches/:id` now requires JWT and ownership/role authorization (creator, `ADMIN`, or `MODERATOR`).
+- `DELETE /matches/:id` now requires JWT and performs protected soft-cancel (`status=CANCELLED`) instead of hard delete.
 - `POST /matches/:id/participants/:participantId/no-show` lets the match creator mark a joined participant as `NO_SHOW` after match start.
 - `POST /matches/:id/results` records an unverified match result.
 - `POST /matches/:id/results/:resultId/verify` verifies the result, applies Elo updates, creates `RatingHistory`, and completes the match.
@@ -263,6 +265,7 @@ pnpm typecheck
 - Additional PostGIS tuning for large-scale nearby search (query plans, selective indexes, and operational monitoring).
 - Rich admin moderation dashboard and dispute score-correction/Elo rollback tooling.
 - Full chronological rating replay for post-correction downstream matches.
+- Additional decomposition of large backend/mobile orchestration files as complexity grows.
 - WebSocket/realtime chat delivery.
 - WebSocket/realtime notification delivery.
 - Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).

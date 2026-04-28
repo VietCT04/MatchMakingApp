@@ -52,6 +52,7 @@ describe('ReliabilityService', () => {
 
     expect(summary.reliabilityScore).toBe(100);
     expect(summary.noShowCount).toBe(0);
+    expect(prisma.userReliabilityStats.upsert).not.toHaveBeenCalled();
   });
 
   it('decreases reliability on no-show', async () => {

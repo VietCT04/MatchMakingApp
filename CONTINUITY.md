@@ -57,6 +57,9 @@ sports-matchmaking/
   - `POST /matches/:id/results`
   - `POST /matches/:id/results/:resultId/verify`
   - `POST /matches/:id/results/:resultId/disputes`
+- Match lifecycle mutation endpoints:
+  - `PATCH /matches/:id` (JWT + owner/admin/moderator authorization)
+  - `DELETE /matches/:id` (JWT + owner/admin/moderator authorization; soft-cancel behavior)
 - Reports endpoint:
   - `POST /reports/users`
 - Moderation endpoints (MODERATOR/ADMIN only):
@@ -225,6 +228,7 @@ sports-matchmaking/
 - Moderation review can correct reliability penalties for dismissed reports, rejected disputes, and reversed no-shows.
 - Moderation dispute resolution can also correct verified match-result Elo updates when corrected scores are provided.
 - Rating correction preserves history: original `RatingHistory` rows are marked reverted, and correction rows are appended.
+- Reliability `GET` endpoints are now read-only and do not upsert rows; missing rows return default summary values.
 - Per-match mute affects push delivery only; in-app notifications remain visible and queryable.
 - Current fit weights:
   - distance 30%
@@ -248,6 +252,8 @@ sports-matchmaking/
 - Protected match write endpoints derive user identity from JWT.
 - No dedicated external admin web app yet (moderation currently handled through API + lightweight mobile screen).
 - Elo correction replay currently recalculates only the disputed match; full chronological replay across later matches is a future improvement.
+- `apps/mobile/app/match/[id].tsx` orchestration was partially extracted into `useMatchDetailActions`.
+- `apps/api/src/matches/match-query.service.ts` was partially split into mapper/ranking helpers to reduce hotspot complexity.
 - No rate limiting or abuse protection yet.
 - Verified result flow automatically updates ratings and writes rating history.
 - Database-backed backend integration coverage exists for the MVP match flow.
