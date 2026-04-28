@@ -347,3 +347,10 @@ pnpm typecheck
 - Real Match is now created only when a location proposal is accepted by all participants.
 - Added manual proposal cancellation endpoint for any participant while PENDING.
 
+
+## 2026-04-28 - Negotiation room hardening
+- Added broader matchmaking negotiation tests (chat permission/validation, location proposal gating, cancellation access checks).
+- Added idempotent confirmation protection path to avoid duplicate real match creation on concurrent location accept actions.
+- Proposal response now includes participant user displayName and reliabilityScore to avoid raw ID-only rendering.
+- Proposal detail UI now polls chat on focus interval and provides manual refresh/action feedback.
+

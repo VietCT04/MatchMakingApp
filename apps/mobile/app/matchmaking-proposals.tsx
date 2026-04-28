@@ -38,7 +38,7 @@ export default function MatchmakingProposalsScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Matchmaking proposals" subtitle="Accept or decline pending auto-match proposals." />
+      <ScreenHeader title="Matchmaking proposals" subtitle="Open each proposal to chat and agree on location." />
       {loading ? <LoadingState message="Loading proposals..." /> : null}
       {error ? <ErrorState message={error} onRetry={refresh} /> : null}
       {!loading && !error && proposals.length === 0 ? <EmptyState title="No proposals yet" message="Run Find Match to create a matchmaking ticket." /> : null}
@@ -47,19 +47,16 @@ export default function MatchmakingProposalsScreen() {
         <AppCard key={proposal.id}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>{proposal.format}</Text>
-            <Badge>{proposal.status}</Badge>
+            <Badge>{proposal.status === 'PENDING' ? ((proposal as any).locationProposals?.[0] ? 'Location proposed' : 'Negotiating') : proposal.status}</Badge>
           </View>
           <Text style={styles.line}>Proposed time: {new Date(proposal.proposedStartTime).toLocaleString()}</Text>
           <Text style={styles.line}>Participants: {proposal.participants?.length ?? 0}</Text>
           <Text style={styles.line}>
+            {(proposal.participants ?? []).map((p) => p.user?.displayName ?? p.userId).join(', ')}
+          </Text>
+          <Text style={styles.line}>
             Latest location: {(proposal as any).locationProposals?.[0]?.status ?? 'NONE'}
           </Text>
-          {proposal.participants?.map((participant) => (
-            <Text key={participant.id} style={styles.line}>
-              {participant.userId} - Team {participant.team} - {participant.status}
-            </Text>
-          ))}
-
           <AppButton variant="secondary" onPress={() => router.push({ pathname: '/matchmaking-proposal/[id]', params: { id: proposal.id } })}>
             Open proposal
           </AppButton>
@@ -79,5 +76,4 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: '#20304a', fontWeight: '700' },
   line: { color: '#44516a' },
-  actions: { flexDirection: 'row', gap: 8 },
 });

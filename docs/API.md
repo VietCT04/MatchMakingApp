@@ -819,3 +819,10 @@ GET /matchmaking/proposals/:id/messages`nPOST /matchmaking/proposals/:id/message
 - Proposal chat/location writes are allowed only when proposal status is PENDING.
 - Match creation is triggered by location proposal consensus (all accepted).
 
+
+## Negotiation hardening notes
+- Old endpoints POST /matchmaking/proposals/:id/accept and POST /matchmaking/proposals/:id/decline are kept for backward compatibility.
+- They no longer create a real match directly.
+- Real match creation only happens after a location proposal reaches unanimous ACCEPTED responses.
+- Proposal chat and location proposal endpoints enforce participant-only access and PENDING-only writes.
+

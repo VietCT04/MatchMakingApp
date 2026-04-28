@@ -137,10 +137,10 @@ export class MatchmakingService {
         sport: true,
         venue: true,
         confirmedMatch: true,
-        participants: { include: { user: { select: { id: true, displayName: true } } }, orderBy: { createdAt: 'asc' } },
+        participants: { include: { user: { select: { id: true, displayName: true, reliabilityStats: { select: { reliabilityScore: true } } } } }, orderBy: { createdAt: 'asc' } },
         locationProposals: { orderBy: { createdAt: 'desc' }, take: 1, include: { responses: true } },
       },
-    });
+    }).then((proposals) => proposals.map((proposal) => this.mapProposalForResponse(proposal)));
   }
 
   async acceptProposal(userId: string, proposalId: string) {
@@ -187,6 +187,7 @@ export class MatchmakingService {
     if (participant.proposal.status !== MatchmakingProposalStatus.PENDING) throw new BadRequestException('Proposal is not pending');
     const trimmed = body.trim();
     if (!trimmed) throw new BadRequestException('Message body is required');
+    if (trimmed.length > 1000) throw new BadRequestException('Message must be at most 1000 characters');
 
     const message = await this.prisma.matchmakingProposalMessage.create({
       data: { proposalId, senderUserId: userId, body: trimmed },
@@ -216,6 +217,9 @@ export class MatchmakingService {
   async proposeLocation(userId: string, proposalId: string, dto: ProposeLocationDto) {
     const participant = await this.assertProposalParticipant(userId, proposalId);
     if (participant.proposal.status !== MatchmakingProposalStatus.PENDING) throw new BadRequestException('Proposal is not pending');
+    if (!Number.isFinite(dto.latitude) || !Number.isFinite(dto.longitude)) {
+      throw new BadRequestException('Please provide latitude and longitude. Google Maps link parsing is coming later.');
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const proposal = await tx.matchmakingLocationProposal.create({
@@ -312,7 +316,17 @@ export class MatchmakingService {
   }
 
   private async confirmLocationAndCreateMatch(locationProposal: Prisma.MatchmakingLocationProposalGetPayload<{ include: { proposal: { include: { participants: true; sport: true } }; responses: true } }>) {
-    const proposal = locationProposal.proposal;
+    const latestProposal = await this.prisma.matchmakingProposal.findUniqueOrThrow({
+      where: { id: locationProposal.proposalId },
+      include: { participants: true, sport: true },
+    });
+    if (latestProposal.status === MatchmakingProposalStatus.CONFIRMED && latestProposal.confirmedMatchId) {
+      return this.prisma.match.findUniqueOrThrow({ where: { id: latestProposal.confirmedMatchId } });
+    }
+    if (latestProposal.status !== MatchmakingProposalStatus.PENDING) {
+      throw new BadRequestException('Proposal is no longer pending');
+    }
+    const proposal = latestProposal;
     let venueId = proposal.venueId;
 
     if (!venueId) {
@@ -360,8 +374,22 @@ export class MatchmakingService {
         })),
       });
 
+      const claim = await tx.matchmakingProposal.updateMany({
+        where: { id: proposal.id, status: MatchmakingProposalStatus.PENDING, confirmedMatchId: null },
+        data: { status: MatchmakingProposalStatus.CONFIRMED, confirmedMatchId: match.id, venueId },
+      });
+
+      if (claim.count === 0) {
+        await tx.matchParticipant.deleteMany({ where: { matchId: match.id } });
+        await tx.match.delete({ where: { id: match.id } });
+        const existingProposal = await tx.matchmakingProposal.findUniqueOrThrow({ where: { id: proposal.id } });
+        if (!existingProposal.confirmedMatchId) {
+          throw new BadRequestException('Proposal already finalized');
+        }
+        return tx.match.findUniqueOrThrow({ where: { id: existingProposal.confirmedMatchId } });
+      }
+
       await tx.matchmakingLocationProposal.update({ where: { id: locationProposal.id }, data: { status: MatchmakingLocationProposalStatus.ACCEPTED, acceptedAt: new Date() } });
-      await tx.matchmakingProposal.update({ where: { id: proposal.id }, data: { status: MatchmakingProposalStatus.CONFIRMED, confirmedMatchId: match.id, venueId } });
       return match;
     });
 
@@ -426,10 +454,10 @@ export class MatchmakingService {
         sport: true,
         venue: true,
         confirmedMatch: true,
-        participants: { include: { user: { select: { id: true, displayName: true } }, ticket: true }, orderBy: { createdAt: 'asc' } },
+        participants: { include: { user: { select: { id: true, displayName: true, reliabilityStats: { select: { reliabilityScore: true } } } }, ticket: true }, orderBy: { createdAt: 'asc' } },
         locationProposals: { include: { responses: true }, orderBy: { createdAt: 'desc' } },
       },
-    });
+    }).then((proposal) => this.mapProposalForResponse(proposal));
   }
 
   private async getLocationProposalById(locationProposalId: string) {
@@ -575,5 +603,33 @@ export class MatchmakingService {
     if ((dto.latitude === undefined) !== (dto.longitude === undefined)) throw new BadRequestException('latitude and longitude must be provided together');
     if (!(await this.prisma.sport.findUnique({ where: { id: dto.sportId }, select: { id: true } }))) throw new BadRequestException('sportId is invalid');
     if (dto.preferredVenueId && !(await this.prisma.venue.findUnique({ where: { id: dto.preferredVenueId }, select: { id: true } }))) throw new BadRequestException('preferredVenueId is invalid');
+  }
+
+  private mapProposalForResponse<T extends {
+    participants?: Array<{
+      user?: { id: string; displayName: string; reliabilityStats?: { reliabilityScore: number } | null };
+      [k: string]: unknown;
+    }>;
+    [k: string]: unknown;
+  }>(proposal: T): T {
+    if (!proposal.participants) {
+      return proposal;
+    }
+    return {
+      ...proposal,
+      participants: proposal.participants.map((participant) => {
+        const user = participant.user;
+        return {
+          ...participant,
+          user: user
+            ? {
+                id: user.id,
+                displayName: user.displayName,
+                reliabilityScore: user.reliabilityStats?.reliabilityScore ?? 100,
+              }
+            : undefined,
+        };
+      }),
+    } as T;
   }
 }

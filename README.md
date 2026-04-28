@@ -1,346 +1,146 @@
 # Sports Matchmaking
 
-Sports Matchmaking is an MVP scaffold for a racket-sports matchmaking product where players discover and create matches, join games, and track skill through a simple Elo-based rating system.
+Sports Matchmaking is a full-stack MVP for racket-sports coordination: discover or auto-match nearby players, negotiate match details, play, verify results, and track skill/reliability.
 
-## Product Idea
-Build an iOS-first app (React Native/Expo) for badminton, pickleball, tennis, and related sports:
-- Player profiles with sport-level ratings
-- Match discovery and match creation
-- Match participation and result tracking
-- Upgradeable rating engine (start Elo, evolve later)
+## Current Scope
 
-## Main Features (Current Scaffold)
-- Mobile screens for home, login/register, profile, discovery, create match, match details, and ratings
-- Polished demo-ready mobile UX across core screens (consistent cards/buttons, clearer copy, and stronger loading/error/empty/success states)
-- API client abstraction connected to the backend for mobile
-- NestJS REST API with modules for users, sports, matches, ratings, venues, JWT auth, and health
-- Prisma schema for key relational entities
-- Elo helper utilities with unit tests
-- Nearby open-match discovery using venue coordinates and PostGIS geospatial filtering
-- Rule-based ranked discovery (`fitScore`) for personalized match ordering
-- Map discovery UI for nearby match browsing (marker-based view)
-- Trust and safety reliability scoring (no-shows, late cancellations, disputes, and reports)
-- Match-specific chat MVP (REST + polling)
-- In-app notifications MVP (database-backed, JWT protected, read/unread workflow)
-- Expo push notifications MVP (delivery layer built on in-app notifications)
-- Notification controls MVP:
-  - global preferences
-  - per-match push mute
-  - quiet hours
-  - chat unread counts
-- Admin/moderation workflow MVP:
-  - role-based access (`USER`, `MODERATOR`, `ADMIN`)
-  - report/dispute/no-show moderation queues
-  - moderation resolution actions with audit logs
-  - reliability-penalty correction on moderation outcomes
-  - Elo rollback + reapply for corrected verified-result disputes (match-level MVP)
+### Core product flows
+- JWT auth (register/login/session restore/logout)
+- Manual match flow: create, discover, join/leave, submit result, verify result
+- Auto-match flow: ticket -> compatible proposal -> negotiation room -> location consensus -> confirmed real match
+- Elo rating updates with rating history
+- Reliability scoring (no-show, late cancellation, disputes, reports)
+- Moderation workflows (USER/MODERATOR/ADMIN)
+
+### Discovery and ranking
+- Nearby discovery with PostGIS (`ST_DWithin`) and `distanceKm`
+- Ranked discovery with rule-based `fitScore`
+- Ranking signals include distance, rating fit, reliability, preference fit, time, slot availability
+- User preferences: sport/format preferences, preferred venues, weekly availability
+
+### Communication and notifications
+- Match chat (REST + polling)
+- Matchmaking proposal chat (REST + polling)
+- In-app notifications (source of truth)
+- Expo push notifications (delivery channel)
+- Notification controls: global preferences, quiet hours, per-match mute
+
+### Mobile UX
+- Expo Router tabs + auth routes
+- Discover list + map view
+- Find Match + proposal list + proposal detail negotiation screen
+- Ratings, profile, notification settings, moderation screen (role-gated)
 
 ## Tech Stack
-- Mobile: React Native + Expo + TypeScript + Expo Router
+- Mobile: React Native + Expo + Expo Router + TypeScript
 - Backend: NestJS + TypeScript
-- Database: PostgreSQL
+- Database: PostgreSQL + PostGIS
 - ORM: Prisma
-- Monorepo package manager: pnpm workspaces
+- Monorepo: pnpm workspaces
 - Shared contracts: `packages/shared`
+
+## Repo Structure
+- `apps/mobile`: Expo app
+- `apps/api`: NestJS API + Prisma schema/migrations/seed
+- `packages/shared`: shared enums/types/DTO contracts
+- `docs`: architecture, API, DB, decisions, testing, security
 
 ## Prerequisites
 - Node.js 20+
 - pnpm 10+
 - Docker Desktop
 
-## Installation
+## Setup
+1. Install dependencies
 ```bash
 pnpm install
 ```
 
-## Environment Setup
-1. Create local env file from template:
+2. Configure environment
 ```bash
 cp .env.example .env
 ```
-2. Required variables are documented in `.env.example`:
-- `DATABASE_URL`
-- `PORT`
-- `EXPO_PUBLIC_API_URL`
-- `JWT_SECRET`
-- `JWT_EXPIRES_IN`
+Required vars: `DATABASE_URL`, `PORT`, `EXPO_PUBLIC_API_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`.
 
-## Running PostgreSQL
+3. Start database
 ```bash
 docker compose up -d
 ```
-
-PostGIS note:
-- Local DB now runs on `postgis/postgis`.
-- If you previously used a plain Postgres container/volume, recreate local DB storage so PostGIS extension setup is clean:
+If migrating from pre-PostGIS local volumes:
 ```bash
 docker compose down -v
 docker compose up -d
 ```
 
-## Running Prisma Migration
+4. Run migrations + generate Prisma client
 ```bash
 cd apps/api
 pnpm prisma:migrate --name init
 pnpm prisma:generate
 ```
 
-The first committed migration is `20260425000100_init`.
-
-## Seeding Demo Data
+5. Seed demo data
 ```bash
 cd apps/api
 pnpm prisma:seed
 ```
 
-## Running Backend
+## Run
 From repo root:
 ```bash
 pnpm dev:api
-```
-
-## Running Mobile App
-From repo root:
-```bash
 pnpm dev:mobile
 ```
 
-For iOS simulator:
-```bash
-cd apps/mobile
-pnpm ios
-```
+Mobile API endpoint:
+- Simulator: usually `http://localhost:3000`
+- Physical device: use LAN IP (`http://<your-ip>:3000`)
 
-Mobile API configuration:
-- iOS simulator default: `EXPO_PUBLIC_API_URL=http://localhost:3000`
-- Physical device: set `EXPO_PUBLIC_API_URL` to your computer LAN URL, for example `http://192.168.1.50:3000`
-- Access tokens are stored with Expo SecureStore.
-
-## Running Tests
+## Verify
 From repo root:
 ```bash
-pnpm test
-pnpm typecheck
+pnpm -r --if-present test
+pnpm -r --if-present typecheck
 ```
 
-## Useful Commands
-```bash
-# Root
-pnpm dev:api
-pnpm dev:mobile
-pnpm test
-pnpm typecheck
+## Key API Areas
+- Auth: `/auth/*`, `/me`
+- Matches: `/matches*`
+- Ratings: `/me/ratings`, `/me/rating-history`
+- Reliability: `/me/reliability`, `/users/:userId/reliability`
+- Reports/moderation: `/reports/*`, `/moderation/*`
+- Match chat: `/matches/:id/chat/*`
+- Notifications/push/preferences: `/notifications*`, `/push/*`, `/me/notification-preferences`
+- Matchmaking:
+  - tickets/search/proposals
+  - proposal chat
+  - location proposals + accept/decline
+  - proposal cancel
 
-# API only
-cd apps/api
-pnpm start:dev
-pnpm test
-pnpm prisma:migrate --name init
-pnpm prisma:generate
+For exact request/response shapes, see [docs/API.md](./docs/API.md).
 
-# Mobile only
-cd apps/mobile
-pnpm start
-pnpm ios
-pnpm android
-pnpm web
-pnpm typecheck
-```
+## Matchmaking Negotiation Room (Current Behavior)
+- Proposal does not auto-timeout after creation.
+- Proposal status is negotiation-first (`PENDING`) until finalized.
+- Participants chat in the proposal room.
+- Participants propose Google Maps location data (name + lat/lng required).
+- Real match is created only after unanimous location acceptance.
+- Any participant can cancel a pending proposal.
+- Backward-compatible proposal accept/decline endpoints remain, but they do not directly create the real match.
 
-## Documentation Index
+## Documentation
 - [CONTINUITY.md](./CONTINUITY.md)
-- [Architecture](./docs/ARCHITECTURE.md)
-- [API](./docs/API.md)
-- [Database](./docs/DATABASE.md)
-- [Rating System](./docs/RATING_SYSTEM.md)
-- [Product Requirements](./docs/PRODUCT_REQUIREMENTS.md)
-- [Roadmap](./docs/ROADMAP.md)
-- [Decision Log](./docs/DECISION_LOG.md)
-- [Contributing](./docs/CONTRIBUTING.md)
-- [Security](./docs/SECURITY.md)
-- [Testing](./docs/TESTING.md)
-- ADRs:
-  - [0001 Tech Stack](./docs/adr/0001-tech-stack.md)
-  - [0002 Rating System](./docs/adr/0002-rating-system.md)
+- [docs/API.md](./docs/API.md)
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- [docs/DATABASE.md](./docs/DATABASE.md)
+- [docs/RATING_SYSTEM.md](./docs/RATING_SYSTEM.md)
+- [docs/SECURITY.md](./docs/SECURITY.md)
+- [docs/TESTING.md](./docs/TESTING.md)
+- [docs/DECISION_LOG.md](./docs/DECISION_LOG.md)
 
-## Troubleshooting
-- `pnpm: command not found`
-  - Install pnpm globally or enable Corepack-based pnpm.
-- Mobile cannot reach backend
-  - Confirm backend is running at `PORT` and `EXPO_PUBLIC_API_URL` points to it.
-- Prisma connection errors
-  - Verify PostgreSQL container is running and `DATABASE_URL` is correct.
-- Empty mobile data
-  - App does not fall back to mock data in normal flow; confirm network and API health endpoint.
-
-## Roadmap (High Level)
-- Phase 1: scaffold + CRUD skeleton (current)
-- Phase 2: robust DB-backed match discovery and filtering (partially implemented)
-- Phase 3: rating update workflow after verified results (partially implemented)
-- Phase 4: JWT auth and protected match writes (implemented)
-- Phase 5: location-based matching
-- Phase 6: realtime chat + notifications
-- Phase 7: payments + club tooling
-- Phase 8: advanced rating system (Glicko-2/TrueSkill)
-
-## Implemented MVP Backend Flow
-- `GET /matches` supports filters: `sportId`, `format`, `status`, `minRating`, `maxRating`, `startsAfter`, `startsBefore`, `venueId`, `latitude`, `longitude`, `radiusKm`, `ranked`.
-- `GET /matches?ranked=true` adds `fitScore` + `fitBreakdown` and sorts by best fit for the authenticated user.
-- Nearby filtering in `GET /matches` is now handled in PostGIS (`ST_DWithin`) and distance is returned from SQL (`distanceKm`) while keeping the same API contract.
-- Ranked fit is rule-based (distance, rating fit, participant reliability, time, slot availability), not AI matchmaking.
-- `POST /matches/:id/join` joins a user, prevents duplicates/full/completed/cancelled matches, and marks a full match as `FULL`.
-- `POST /matches/:id/leave` marks a participant as `LEFT`, tracks cancellation stats, and counts late cancellation if the leave happens within 2 hours of match start.
-- `PATCH /matches/:id` now requires JWT and ownership/role authorization (creator, `ADMIN`, or `MODERATOR`).
-- `DELETE /matches/:id` now requires JWT and performs protected soft-cancel (`status=CANCELLED`) instead of hard delete.
-- `POST /matches/:id/participants/:participantId/no-show` lets the match creator mark a joined participant as `NO_SHOW` after match start.
-- `POST /matches/:id/results` records an unverified match result.
-- `POST /matches/:id/results/:resultId/verify` verifies the result, applies Elo updates, creates `RatingHistory`, and completes the match.
-- `POST /matches/:id/results/:resultId/disputes` lets joined participants raise a dispute for an existing result.
-- `POST /reports/users` creates a user report and updates reported-user reliability stats.
-- `GET /me/reliability` returns current authenticated-user reliability stats.
-- `GET /users/:userId/reliability` returns public reliability summary for a user.
-- `GET /matches/:id/chat/messages` returns match chat messages for match creator/participants.
-- `POST /matches/:id/chat/messages` sends a match chat message for eligible users.
-- `GET /matches/:id/chat/unread-count` returns unread chat message count (excluding own messages).
-- `PATCH /matches/:id/chat/read` marks chat as read for current user.
-- `GET /notifications` returns current-user notifications with read/unread filtering.
-- `GET /notifications/unread-count` returns unread notification count.
-- `PATCH /notifications/:id/read` marks a single notification as read.
-- `PATCH /notifications/read-all` marks all current-user notifications as read.
-- `POST /push/devices` registers/upserts Expo push token for current user.
-- `DELETE /push/devices/:expoPushToken` deactivates current-user push token.
-- `GET /push/devices` lists current-user active push devices.
-- `GET /me/notification-preferences` and `PATCH /me/notification-preferences` manage backend push preference flags.
-- `GET /matches/:id/notification-preference` and `PATCH /matches/:id/notification-preference` manage per-match push mute.
-- Notification records remain the source of truth; Expo push is a best-effort delivery channel.
-- Per-match mute and quiet hours affect push delivery only; in-app notification records are still created.
-- Push delivery failures do not block core match/chat/result/trust workflows.
-- `GET /users/:userId/ratings` returns a user's current sport ratings.
-- `GET /users/:userId/rating-history` returns rating change history.
-- Reliability score is separate from Elo:
-  - Elo measures skill/performance.
-  - Reliability measures trust/safety behavior.
-- Moderation endpoints are role-restricted to `MODERATOR` and `ADMIN`.
-- Dispute correction preserves rating auditability:
-  - original `RatingHistory` rows are marked reverted
-  - correction `RatingHistory` rows are appended (no silent overwrite)
-
-## Implemented MVP Mobile Flow
-- Stable authenticated flow now covers:
-  - register/login -> discover open matches -> create match -> join/leave -> submit result -> verify result (different joined participant) -> rating update visible in ratings/profile -> logout
-- Home explains the full product loop and provides direct navigation to core flows.
-- Login/Register include clearer validation messaging and consistent CTA styling.
-- Match Discovery fetches open matches from the backend and supports simple sport filtering.
-- Match Discovery supports optional nearby mode:
-  - "Use my location" permission flow
-  - radius filter options (`3`, `5`, `10`, `20` km)
-  - distance labels on cards (for example `2.4 km away`)
-  - denied permission fallback message while still showing all open matches
-- Authenticated discovery requests ranked results and shows `NN% fit` per card (`Best matches for you`).
-- Discover cards also show participant reliability (for ranked payloads) when available.
-- Map discovery route (`/map`) uses the same nearby ranked query (`latitude`, `longitude`, `radiusKm`, `ranked=true`) and displays venue markers with a selected-match preview card and deep-link to match detail.
-- Create Match has sectioned form UX (sport, venue, format, details, date/time, rating range), helper text, backend error display, submit disabling, and success feedback.
-- Match Detail has been redesigned with reusable sections (hero summary, status timeline, team rosters, action panel, result workflow card, and trust/safety panel).
-- Result workflow UX is now clearer across states: no result, pending verification, verified/completed, and disputed.
-- Trust/safety actions are now organized in a dedicated panel with clear visibility rules for report, no-show, and dispute.
-- Match chat screen supports REST polling MVP (open chat from match detail, read/send messages, manual refresh, and periodic refresh while focused).
-- Match chat tracks unread counts and marks messages as read on open.
-- Notifications tab shows unread count, list/read state, mark-all-as-read, and deep-link to match detail when `data.matchId` is present.
-- Notifications tab includes navigation to Notification settings.
-- Notification settings screen (`/notification-settings`) lets users edit and save push preference flags and quiet hours (`HH:mm` fields + timezone).
-- Mobile auth flow now attempts push registration after session restore/login/register and deactivates known token on logout.
-- Push notification tap navigates to match detail when `matchId` exists, otherwise to Notifications tab.
-- Ratings screen groups rating cards by sport+format and improves history readability (`old -> new`, signed delta, date, match label).
-- Profile screen now has clean fallback text, a clearer ratings summary, and a reliability stats card.
-- Login/Register use `/auth/login` and `/auth/register`.
-- Authenticated API calls attach `Authorization: Bearer <token>`.
-- Create, join, leave, submit result, and verify result derive user identity from JWT.
-- Ratings uses `/me/ratings` and `/me/rating-history`.
-- Profile uses `/me`.
-- Temporary demo-user normal flow has been removed from navigation and match detail behavior.
-
-## Remaining TODOs
-- Push receipt analytics and delivery diagnostics UI.
-- Payments.
-- Additional PostGIS tuning for large-scale nearby search (query plans, selective indexes, and operational monitoring).
-- Rich admin moderation dashboard and dispute score-correction/Elo rollback tooling.
-- Full chronological rating replay for post-correction downstream matches.
-- Additional decomposition of large backend/mobile orchestration files as complexity grows.
-- WebSocket/realtime chat delivery.
-- WebSocket/realtime notification delivery.
-- Richer ranking signals (availability windows, reliability trends over time, and learned recommendations).
-
-## Auth Quick Test
-```bash
-curl -X POST http://localhost:3000/auth/register \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"viet@example.com\",\"password\":\"password123\",\"displayName\":\"Viet\"}"
-
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"viet@example.com\",\"password\":\"password123\"}"
-
-curl http://localhost:3000/me \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-## Manual Match Flow Test
-After migration + seed, use the seeded records from `apps/api/prisma/seed.ts`.
-
-```bash
-curl http://localhost:3000/health
-curl http://localhost:3000/sports
-curl http://localhost:3000/users
-curl "http://localhost:3000/matches?status=OPEN"
-curl "http://localhost:3000/matches?status=OPEN&ranked=true&latitude=1.3002&longitude=103.8001&radiusKm=5" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Join, submit, and verify flow:
-
-```bash
-curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/join \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d "{\"team\":\"A\"}"
-
-curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d "{\"teamAScore\":21,\"teamBScore\":17}"
-
-curl -X POST http://localhost:3000/matches/match-badminton-doubles-demo/results/<RESULT_ID>/verify \
-  -H "Authorization: Bearer <ACCESS_TOKEN_FOR_DIFFERENT_JOINED_PARTICIPANT>"
-```
-
-Backend integration coverage for this flow lives in `apps/api/src/matches/match-flow.integration.spec.ts`.
-
-## Player Profile and Preferences (MVP)
-- Players can edit profile via PATCH /me/profile (display name, bio, home location text, optional avatar URL and skill description).
-- Players can manage preferences via /me/preferences endpoints for sports/formats, preferred venues, and weekly recurring availability.
-- Ranked discovery now includes preferenceScore in itBreakdown and uses rule-based personalization (no AI).
-- Mobile includes Profile editing and a Player preferences screen to save sports, venue, and availability signals.
-- Weekly availability is recurring MVP data (dayOfWeek + HH:mm); no calendar sync yet.
-
-
-## Auto Matchmaking (MVP)
-- Added auto matchmaking flow for physical sports:
-  1. Create matchmaking ticket (POST /matchmaking/tickets)
-  2. Run search (POST /matchmaking/search)
-  3. Receive pending proposal
-  4. Accept/decline proposal
-  5. On full acceptance, a real match is created automatically.
-- Matching remains rule-based and deterministic (no AI, no websocket realtime, no background worker).
-- Search expansion by ticket age:
-  - < 5 min: elo tolerance 100, base radius
-  - 5-10 min: elo tolerance 200, radius x1.5
-  - > 10 min: elo tolerance 300, radius x2
-
-
-## Auto Matchmaking Negotiation Update
-- Auto-match proposals now act as negotiation rooms (no automatic proposal timeout).
-- Participants chat in proposal room and propose Google Maps-based locations.
-- Location is accepted/declined by participants; match is created only after all accept a location proposal.
-- Any participant can cancel a pending proposal manually.
-- Google Places autocomplete is not included in MVP; manual location fields are used.
-
+## Known TODOs
+- Proposal/match chat realtime (WebSocket) instead of polling
+- Google Maps link parsing and/or Places autocomplete
+- Push delivery analytics/observability
+- Payments and court booking integration
+- Advanced ranking and recommendation improvements

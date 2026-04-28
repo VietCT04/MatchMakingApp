@@ -660,3 +660,9 @@ This section tracks what has been implemented from this review, and what is stil
 - Updated proposal list cards to open detail screen and show latest location proposal status.
 - Added helper text for manual Google Maps link + lat/lng input workflow.
 
+
+## Update - Negotiation room polish
+- Proposal detail screen now shows clearer sections, participant display names, reliability hints, status badges, and action error feedback.
+- Chat section now supports periodic REST polling while focused plus manual refresh and post-send refresh.
+- Location section now highlights latest proposal state and participant response statuses with clearer required-field guidance.
+

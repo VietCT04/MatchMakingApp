@@ -29,6 +29,20 @@ describe('MatchmakingService', () => {
         findMany: jest.fn(),
         update: jest.fn(),
       },
+      matchmakingProposalMessage: {
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+      },
+      matchmakingLocationProposal: {
+        create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUniqueOrThrow: jest.fn(),
+        update: jest.fn(),
+      },
+      matchmakingLocationProposalResponse: {
+        createMany: jest.fn(),
+        update: jest.fn(),
+      },
       match: { create: jest.fn() },
       matchParticipant: { createMany: jest.fn() },
       $transaction: jest.fn(async (fn: any) => fn(prisma)),
@@ -64,6 +78,112 @@ describe('MatchmakingService', () => {
 
     expect(prisma.matchmakingTicket.updateMany).toHaveBeenCalled();
     expect(prisma.matchmakingTicket.create).toHaveBeenCalled();
+  });
+
+  it('participant can send and read proposal messages', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue({
+      id: 'pp-1',
+      user: { id: 'user-a', displayName: 'A' },
+      proposal: { id: 'proposal-1', status: MatchmakingProposalStatus.PENDING, participants: [{ userId: 'user-a' }, { userId: 'user-b' }] },
+    });
+    prisma.matchmakingProposalMessage.create.mockResolvedValue({ id: 'msg-1', senderUserId: 'user-a', body: 'Hi', sender: { id: 'user-a', displayName: 'A' } });
+    prisma.matchmakingProposalMessage.findMany.mockResolvedValue([{ id: 'msg-1' }]);
+
+    const sent = await service.sendProposalMessage('user-a', 'proposal-1', 'Hi');
+    const messages = await service.getProposalMessages('user-a', 'proposal-1');
+
+    expect(sent.id).toBe('msg-1');
+    expect(messages).toHaveLength(1);
+  });
+
+  it('non participant cannot read or send messages', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue(null);
+
+    await expect(service.getProposalMessages('user-x', 'proposal-1')).rejects.toThrow();
+    await expect(service.sendProposalMessage('user-x', 'proposal-1', 'Hi')).rejects.toThrow();
+  });
+
+  it('empty and overlong message rejected', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue({
+      id: 'pp-1',
+      user: { id: 'user-a', displayName: 'A' },
+      proposal: { id: 'proposal-1', status: MatchmakingProposalStatus.PENDING, participants: [] },
+    });
+    await expect(service.sendProposalMessage('user-a', 'proposal-1', '   ')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.sendProposalMessage('user-a', 'proposal-1', 'a'.repeat(1001))).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('confirmed and cancelled proposal block sending messages', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst
+      .mockResolvedValueOnce({ id: 'pp-1', user: { id: 'user-a', displayName: 'A' }, proposal: { status: MatchmakingProposalStatus.CONFIRMED, participants: [] } })
+      .mockResolvedValueOnce({ id: 'pp-1', user: { id: 'user-a', displayName: 'A' }, proposal: { status: MatchmakingProposalStatus.CANCELLED, participants: [] } });
+
+    await expect(service.sendProposalMessage('user-a', 'proposal-1', 'hi')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.sendProposalMessage('user-a', 'proposal-1', 'hi')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('participant can propose location and proposer auto-accepted', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue({
+      id: 'pp-1',
+      user: { id: 'user-a', displayName: 'A' },
+      proposal: { id: 'proposal-1', status: MatchmakingProposalStatus.PENDING, participants: [{ userId: 'user-a' }, { userId: 'user-b' }] },
+    });
+    prisma.matchmakingLocationProposal.create.mockResolvedValue({ id: 'lp-1' });
+    prisma.matchmakingLocationProposal.findUniqueOrThrow.mockResolvedValue({
+      id: 'lp-1',
+      proposalId: 'proposal-1',
+      locationName: 'Court',
+      status: 'PENDING',
+      proposal: { participants: [], sport: { id: 'sport-1', name: 'Badminton' } },
+      responses: [{ userId: 'user-a', status: 'ACCEPTED' }, { userId: 'user-b', status: 'PENDING' }],
+    });
+
+    await service.proposeLocation('user-a', 'proposal-1', {
+      locationName: 'Court',
+      latitude: 1.3,
+      longitude: 103.8,
+    });
+
+    expect(prisma.matchmakingLocationProposalResponse.createMany).toHaveBeenCalled();
+    const data = prisma.matchmakingLocationProposalResponse.createMany.mock.calls[0][0].data;
+    expect(data.find((x: any) => x.userId === 'user-a').status).toBe('ACCEPTED');
+  });
+
+  it('non participant cannot propose location', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue(null);
+    await expect(service.proposeLocation('user-x', 'proposal-1', { locationName: 'Court', latitude: 1.3, longitude: 103.8 })).rejects.toThrow();
+  });
+
+  it('cancelled proposal blocks new location proposals', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue({
+      id: 'pp-1',
+      user: { id: 'user-a', displayName: 'A' },
+      proposal: { id: 'proposal-1', status: MatchmakingProposalStatus.CANCELLED, participants: [] },
+    });
+    await expect(service.proposeLocation('user-a', 'proposal-1', { locationName: 'Court', latitude: 1.3, longitude: 103.8 })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('invalid latitude or longitude rejected', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue({
+      id: 'pp-1',
+      user: { id: 'user-a', displayName: 'A' },
+      proposal: { id: 'proposal-1', status: MatchmakingProposalStatus.PENDING, participants: [] },
+    });
+    await expect(service.proposeLocation('user-a', 'proposal-1', { locationName: 'Court', latitude: Number.NaN as unknown as number, longitude: 103.8 })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('non participant cannot cancel proposal', async () => {
+    const { service, prisma } = createService();
+    prisma.matchmakingProposalParticipant.findFirst.mockResolvedValue(null);
+    await expect(service.cancelProposal('user-x', 'proposal-1')).rejects.toThrow();
   });
 
   it('rejects invalid time window', async () => {

@@ -356,6 +356,11 @@ export interface MatchmakingProposalParticipantDto {
   createdAt: string;
   updatedAt: string;
   respondedAt: string | null;
+  user?: {
+    id: string;
+    displayName: string;
+    reliabilityScore?: number;
+  };
 }
 
 export interface MatchmakingProposalDto {
