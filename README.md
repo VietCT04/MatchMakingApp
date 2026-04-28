@@ -336,3 +336,11 @@ Backend integration coverage for this flow lives in `apps/api/src/matches/match-
   - 5-10 min: elo tolerance 200, radius x1.5
   - > 10 min: elo tolerance 300, radius x2
 
+
+## Auto Matchmaking Negotiation Update
+- Auto-match proposals now act as negotiation rooms (no automatic proposal timeout).
+- Participants chat in proposal room and propose Google Maps-based locations.
+- Location is accepted/declined by participants; match is created only after all accept a location proposal.
+- Any participant can cancel a pending proposal manually.
+- Google Places autocomplete is not included in MVP; manual location fields are used.
+

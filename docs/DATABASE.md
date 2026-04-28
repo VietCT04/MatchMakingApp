@@ -263,3 +263,10 @@ pnpm prisma:seed
 - MatchmakingProposalParticipant`n  - per-user accept/decline state inside proposal.
 - Added enum values in NotificationType for auto-match lifecycle notifications.
 
+
+## Matchmaking negotiation data model additions
+- MatchmakingProposalMessage for negotiation-room chat.
+- MatchmakingLocationProposal for candidate meetup locations.
+- MatchmakingLocationProposalResponse for participant-level accept/decline responses.
+- Venue now supports optional googleMapsUrl and googlePlaceId for mapping context and venue reuse.
+

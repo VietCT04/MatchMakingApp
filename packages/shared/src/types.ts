@@ -64,6 +64,10 @@ export enum NotificationType {
   AUTO_MATCH_CONFIRMED = 'AUTO_MATCH_CONFIRMED',
   AUTO_MATCH_DECLINED = 'AUTO_MATCH_DECLINED',
   AUTO_MATCH_EXPIRED = 'AUTO_MATCH_EXPIRED',
+  AUTO_MATCH_LOCATION_PROPOSED = 'AUTO_MATCH_LOCATION_PROPOSED',
+  AUTO_MATCH_LOCATION_ACCEPTED = 'AUTO_MATCH_LOCATION_ACCEPTED',
+  AUTO_MATCH_LOCATION_DECLINED = 'AUTO_MATCH_LOCATION_DECLINED',
+  AUTO_MATCH_CANCELLED = 'AUTO_MATCH_CANCELLED',
   SYSTEM = 'SYSTEM',
 }
 
@@ -365,6 +369,44 @@ export interface MatchmakingProposalDto {
   updatedAt: string;
   confirmedMatchId: string | null;
   participants?: MatchmakingProposalParticipantDto[];
+}
+
+export interface MatchmakingProposalMessageDto {
+  id: string;
+  proposalId: string;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface MatchmakingLocationProposalResponseDto {
+  id: string;
+  locationProposalId: string;
+  userId: string;
+  status: MatchmakingProposalParticipantStatus;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt: string | null;
+}
+
+export interface MatchmakingLocationProposalDto {
+  id: string;
+  proposalId: string;
+  proposedByUserId: string;
+  locationName: string;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  googleMapsUrl: string | null;
+  googlePlaceId: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+  acceptedAt: string | null;
+  cancelledAt: string | null;
+  responses?: MatchmakingLocationProposalResponseDto[];
 }
 
 export interface NotificationPreferenceDto {

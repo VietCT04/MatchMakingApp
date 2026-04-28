@@ -813,3 +813,9 @@ POST /matchmaking/proposals/:id/accept`n- Accept proposal participant slot for c
 POST /matchmaking/proposals/:id/decline`n- Declines proposal and marks proposal DECLINED.
 - Other tickets return to SEARCHING (if not expired) or EXPIRED.
 
+
+## Matchmaking negotiation endpoints
+GET /matchmaking/proposals/:id/messages`nPOST /matchmaking/proposals/:id/messages`nGET /matchmaking/proposals/:id/location-proposals`nPOST /matchmaking/proposals/:id/location-proposals`nPOST /matchmaking/location-proposals/:locationProposalId/accept`nPOST /matchmaking/location-proposals/:locationProposalId/decline`nPOST /matchmaking/proposals/:id/cancel`n- All endpoints require JWT and proposal participation.
+- Proposal chat/location writes are allowed only when proposal status is PENDING.
+- Match creation is triggered by location proposal consensus (all accepted).
+

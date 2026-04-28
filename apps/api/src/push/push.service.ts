@@ -230,6 +230,10 @@ export class PushService {
       case NotificationType.AUTO_MATCH_CONFIRMED:
       case NotificationType.AUTO_MATCH_DECLINED:
       case NotificationType.AUTO_MATCH_EXPIRED:
+      case NotificationType.AUTO_MATCH_LOCATION_PROPOSED:
+      case NotificationType.AUTO_MATCH_LOCATION_ACCEPTED:
+      case NotificationType.AUTO_MATCH_LOCATION_DECLINED:
+      case NotificationType.AUTO_MATCH_CANCELLED:
         return effective.matchUpdates;
       case NotificationType.RESULT_SUBMITTED:
       case NotificationType.RESULT_VERIFIED:

@@ -654,3 +654,9 @@ This section tracks what has been implemented from this review, and what is stil
 - Added Discover entry CTA: Find match automatically.
 - UI uses existing app primitives and keeps flow simple for demo/use testing.
 
+
+## Update - Matchmaking proposal negotiation UI
+- Added proposal detail route with: proposal status, participant list, chat, location proposals, accept/decline actions, and cancel proposal action.
+- Updated proposal list cards to open detail screen and show latest location proposal status.
+- Added helper text for manual Google Maps link + lat/lng input workflow.
+

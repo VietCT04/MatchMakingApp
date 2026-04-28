@@ -147,3 +147,10 @@ apps/mobile/app/
 - Real match creation is deferred until all proposal participants accept.
 - No websocket realtime and no background queue worker in this phase.
 
+
+## Proposal negotiation flow
+- Search creates a PENDING proposal and participant rows, but does not create a match immediately.
+- Proposal detail APIs support chat + location negotiation.
+- Location consensus (all ACCEPTED responses) is the only path that confirms proposal and creates real match.
+- Cancellation path sets proposal CANCELLED without auto-requeueing users in MVP.
+

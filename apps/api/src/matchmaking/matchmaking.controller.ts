@@ -4,6 +4,9 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateMatchmakingTicketDto } from './dto.create-matchmaking-ticket';
 import { MatchmakingListQueryDto } from './dto.matchmaking-list-query';
+import { SendProposalMessageDto } from './dto.send-proposal-message';
+import { ProposeLocationDto } from './dto.propose-location';
+import { CancelProposalDto } from './dto.cancel-proposal';
 import { MatchmakingService } from './matchmaking.service';
 
 @Controller('matchmaking')
@@ -39,5 +42,40 @@ export class MatchmakingController {
   @Post('proposals/:id/decline')
   declineProposal(@CurrentUser() user: AuthUser, @Param('id') proposalId: string) {
     return this.matchmakingService.declineProposal(user.id, proposalId);
+  }
+
+  @Post('proposals/:id/cancel')
+  cancelProposal(@CurrentUser() user: AuthUser, @Param('id') proposalId: string, @Body() dto: CancelProposalDto) {
+    return this.matchmakingService.cancelProposal(user.id, proposalId, dto.reason);
+  }
+
+  @Get('proposals/:id/messages')
+  getProposalMessages(@CurrentUser() user: AuthUser, @Param('id') proposalId: string, @Query() query: MatchmakingListQueryDto) {
+    return this.matchmakingService.getProposalMessages(user.id, proposalId, query.limit);
+  }
+
+  @Post('proposals/:id/messages')
+  sendProposalMessage(@CurrentUser() user: AuthUser, @Param('id') proposalId: string, @Body() dto: SendProposalMessageDto) {
+    return this.matchmakingService.sendProposalMessage(user.id, proposalId, dto.body);
+  }
+
+  @Get('proposals/:id/location-proposals')
+  getLocationProposals(@CurrentUser() user: AuthUser, @Param('id') proposalId: string) {
+    return this.matchmakingService.getLocationProposals(user.id, proposalId);
+  }
+
+  @Post('proposals/:id/location-proposals')
+  proposeLocation(@CurrentUser() user: AuthUser, @Param('id') proposalId: string, @Body() dto: ProposeLocationDto) {
+    return this.matchmakingService.proposeLocation(user.id, proposalId, dto);
+  }
+
+  @Post('location-proposals/:locationProposalId/accept')
+  acceptLocationProposal(@CurrentUser() user: AuthUser, @Param('locationProposalId') locationProposalId: string) {
+    return this.matchmakingService.acceptLocationProposal(user.id, locationProposalId);
+  }
+
+  @Post('location-proposals/:locationProposalId/decline')
+  declineLocationProposal(@CurrentUser() user: AuthUser, @Param('locationProposalId') locationProposalId: string) {
+    return this.matchmakingService.declineLocationProposal(user.id, locationProposalId);
   }
 }

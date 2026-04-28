@@ -10,6 +10,8 @@ import type {
   MatchResultDto,
   MatchWithDetailsDto,
   MatchmakingProposalDto,
+  MatchmakingLocationProposalDto,
+  MatchmakingProposalMessageDto,
   MatchmakingTicketDto,
   MyPreferencesDto,
   ReportStatus,
@@ -612,6 +614,56 @@ export const apiClient = {
     return request(`/matchmaking/proposals/${proposalId}/decline`, {
       method: 'POST',
       body: JSON.stringify({}),
+    });
+  },
+
+  getProposalMessages(proposalId: string): Promise<MatchmakingProposalMessageDto[]> {
+    return request(`/matchmaking/proposals/${proposalId}/messages`);
+  },
+
+  sendProposalMessage(proposalId: string, body: string): Promise<MatchmakingProposalMessageDto> {
+    return request(`/matchmaking/proposals/${proposalId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+  },
+
+  getLocationProposals(proposalId: string): Promise<MatchmakingLocationProposalDto[]> {
+    return request(`/matchmaking/proposals/${proposalId}/location-proposals`);
+  },
+
+  proposeLocation(proposalId: string, payload: {
+    locationName: string;
+    address?: string;
+    latitude: number;
+    longitude: number;
+    googleMapsUrl?: string;
+    googlePlaceId?: string;
+  }): Promise<MatchmakingLocationProposalDto> {
+    return request(`/matchmaking/proposals/${proposalId}/location-proposals`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  acceptLocationProposal(locationProposalId: string): Promise<MatchmakingLocationProposalDto> {
+    return request(`/matchmaking/location-proposals/${locationProposalId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  declineLocationProposal(locationProposalId: string): Promise<MatchmakingLocationProposalDto> {
+    return request(`/matchmaking/location-proposals/${locationProposalId}/decline`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  cancelMatchmakingProposal(proposalId: string, reason?: string): Promise<MatchmakingProposalDto> {
+    return request(`/matchmaking/proposals/${proposalId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(reason ? { reason } : {}),
     });
   },
 };

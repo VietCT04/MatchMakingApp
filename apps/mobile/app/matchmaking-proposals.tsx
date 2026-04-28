@@ -51,18 +51,18 @@ export default function MatchmakingProposalsScreen() {
           </View>
           <Text style={styles.line}>Proposed time: {new Date(proposal.proposedStartTime).toLocaleString()}</Text>
           <Text style={styles.line}>Participants: {proposal.participants?.length ?? 0}</Text>
+          <Text style={styles.line}>
+            Latest location: {(proposal as any).locationProposals?.[0]?.status ?? 'NONE'}
+          </Text>
           {proposal.participants?.map((participant) => (
             <Text key={participant.id} style={styles.line}>
               {participant.userId} - Team {participant.team} - {participant.status}
             </Text>
           ))}
 
-          {proposal.status === 'PENDING' ? (
-            <View style={styles.actions}>
-              <AppButton onPress={async () => { await apiClient.acceptMatchmakingProposal(proposal.id); await refresh(); }}>Accept</AppButton>
-              <AppButton variant="secondary" onPress={async () => { await apiClient.declineMatchmakingProposal(proposal.id); await refresh(); }}>Decline</AppButton>
-            </View>
-          ) : null}
+          <AppButton variant="secondary" onPress={() => router.push({ pathname: '/matchmaking-proposal/[id]', params: { id: proposal.id } })}>
+            Open proposal
+          </AppButton>
 
           {proposal.status === 'CONFIRMED' && proposal.confirmedMatchId ? (
             <AppButton variant="secondary" onPress={() => router.push({ pathname: '/match/[id]', params: { id: proposal.confirmedMatchId! } })}>

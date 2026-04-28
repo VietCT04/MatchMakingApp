@@ -339,3 +339,11 @@ pnpm typecheck
 - When all proposal participants accept, backend creates a real Match and MatchParticipant rows.
 - If any participant declines, proposal is declined and tickets are returned to SEARCHING or EXPIRED.
 
+
+## 2026-04-28 - Auto matchmaking negotiation room
+- Matchmaking proposals no longer auto-timeout after creation; proposal remains active until CONFIRMED or CANCELLED.
+- Added proposal chat: participants can read/write while proposal is PENDING.
+- Added location proposal workflow with per-participant accept/decline responses.
+- Real Match is now created only when a location proposal is accepted by all participants.
+- Added manual proposal cancellation endpoint for any participant while PENDING.
+

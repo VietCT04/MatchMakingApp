@@ -196,7 +196,7 @@ describe('MatchmakingService', () => {
     expect(prisma.matchmakingProposal.update).toHaveBeenCalled();
     expect(notificationsService.createManyNotifications).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ type: NotificationType.AUTO_MATCH_DECLINED }),
+        expect.objectContaining({ type: NotificationType.AUTO_MATCH_CANCELLED }),
       ]),
     );
   });

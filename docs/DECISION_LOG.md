@@ -340,3 +340,9 @@ Follow-up:
 - Decision: keep MVP request-driven (no realtime queue worker yet).
 - Reason: simpler rollout and lower operational complexity for early product stage.
 
+
+## 2026-04-28: No-timeout proposal negotiation for physical sports
+- Decision: replace timeout-driven auto confirmation behavior with participant negotiation flow.
+- Reason: physical games need explicit agreement on real-world location before creating a match.
+- Decision: keep negotiation request-driven (REST polling), no websocket or background worker in MVP.
+
