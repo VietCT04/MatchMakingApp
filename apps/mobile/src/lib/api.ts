@@ -9,6 +9,8 @@ import type {
   MatchResultDisputeDto,
   MatchResultDto,
   MatchWithDetailsDto,
+  MatchmakingProposalDto,
+  MatchmakingTicketDto,
   MyPreferencesDto,
   ReportStatus,
   NotificationPreferenceDto,
@@ -116,6 +118,19 @@ export type ModerationDisputesParams = {
 
 export type ModerationNoShowsParams = {
   limit?: number;
+};
+
+export type CreateMatchmakingTicketInput = {
+  sportId: string;
+  format: 'SINGLES' | 'DOUBLES';
+  latitude?: number;
+  longitude?: number;
+  radiusKm: number;
+  earliestStart: string;
+  latestEnd: string;
+  preferredVenueId?: string;
+  minElo?: number;
+  maxElo?: number;
 };
 
 type RequestOptions = {
@@ -561,6 +576,42 @@ export const apiClient = {
     return request(`/moderation/no-shows/${participantId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    });
+  },
+
+  createMatchmakingTicket(payload: CreateMatchmakingTicketInput): Promise<MatchmakingTicketDto> {
+    return request('/matchmaking/tickets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  runMatchmakingSearch(): Promise<{ found: boolean; proposal?: MatchmakingProposalDto; message?: string; suggestions?: { eloTolerance: number; suggestedRadiusKm: number } }> {
+    return request('/matchmaking/search', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  getMyMatchmakingTickets(): Promise<MatchmakingTicketDto[]> {
+    return request('/matchmaking/tickets/me');
+  },
+
+  getMyMatchmakingProposals(): Promise<MatchmakingProposalDto[]> {
+    return request('/matchmaking/proposals/me');
+  },
+
+  acceptMatchmakingProposal(proposalId: string): Promise<MatchmakingProposalDto> {
+    return request(`/matchmaking/proposals/${proposalId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  declineMatchmakingProposal(proposalId: string): Promise<MatchmakingProposalDto> {
+    return request(`/matchmaking/proposals/${proposalId}/decline`, {
+      method: 'POST',
+      body: JSON.stringify({}),
     });
   },
 };

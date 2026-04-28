@@ -330,3 +330,12 @@ pnpm typecheck
 - Mobile profile now supports inline profile editing and links to dedicated player preferences screen.
 - Added backend tests for preference validation/service behavior and updated ranking tests.
 - Remaining TODOs: calendar sync, per-slot timezone UX improvements, AI recommendations (out of scope).
+
+## 2026-04-28 - Auto matchmaking MVP
+- Added request-driven auto matchmaking with ticket -> search -> proposal -> accept/decline -> confirmed match flow.
+- Added Prisma models: MatchmakingTicket, MatchmakingProposal, MatchmakingProposalParticipant and new statuses/enums.
+- Added notification types: AUTO_MATCH_FOUND, AUTO_MATCH_CONFIRMED, AUTO_MATCH_DECLINED, AUTO_MATCH_EXPIRED.
+- Search expansion is deterministic by ticket age (elo tolerance and radius widening) and no background worker is used.
+- When all proposal participants accept, backend creates a real Match and MatchParticipant rows.
+- If any participant declines, proposal is declined and tickets are returned to SEARCHING or EXPIRED.
+

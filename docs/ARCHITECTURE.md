@@ -139,3 +139,11 @@ apps/mobile/app/
 - Ranking pipeline remains in MatchRankingService and MatchQueryService; preference signals are fetched from PreferencesService during ranked discovery only.
 - No API contract changes were required for discovery clients beyond reading itBreakdown.preferenceScore when present.
 
+
+## Auto matchmaking architecture (MVP)
+- Module: MatchmakingModule (matchmaking.controller.ts, matchmaking.service.ts).
+- Controller stays thin; matching + scoring + proposal transitions are inside MatchmakingService.
+- Flow is request-driven (POST /matchmaking/search) and synchronous by design for MVP.
+- Real match creation is deferred until all proposal participants accept.
+- No websocket realtime and no background queue worker in this phase.
+

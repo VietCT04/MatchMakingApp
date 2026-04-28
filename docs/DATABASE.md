@@ -256,3 +256,10 @@ pnpm prisma:seed
 - User now includes optional vatarUrl and skillDescription.
 - Sport now includes reverse relation userSportPreferences.
 
+
+## Auto matchmaking tables
+- MatchmakingTicket`n  - search request from a single player (sport/format, time window, optional location/elo/venue constraints).
+- MatchmakingProposal`n  - pending group proposal before real match creation.
+- MatchmakingProposalParticipant`n  - per-user accept/decline state inside proposal.
+- Added enum values in NotificationType for auto-match lifecycle notifications.
+

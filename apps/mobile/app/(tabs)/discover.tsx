@@ -93,9 +93,14 @@ export default function DiscoverScreen() {
         title={token ? 'Best matches for you' : 'Open matches'}
         subtitle={token ? 'Ranked by fit score for your profile.' : 'Browse open matches and join a game.'}
         action={
-          <AppButton variant="secondary" onPress={() => router.push('/map')}>
-            Map view
-          </AppButton>
+          <View style={styles.headerActions}>
+            <AppButton variant="secondary" onPress={() => router.push('/find-match')}>
+              Find match automatically
+            </AppButton>
+            <AppButton variant="secondary" onPress={() => router.push('/map')}>
+              Map view
+            </AppButton>
+          </View>
         }
       />
 
@@ -205,4 +210,5 @@ const styles = StyleSheet.create({
   metaValue: { color: '#20304a', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   muted: { color: '#6f7b91' },
+  headerActions: { gap: 8 },
 });

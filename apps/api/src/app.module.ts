@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PushModule } from './push/push.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PreferencesModule } from './preferences/preferences.module';
+import { MatchmakingModule } from './matchmaking/matchmaking.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PreferencesModule } from './preferences/preferences.module';
     NotificationsModule,
     ModerationModule,
     PreferencesModule,
+    MatchmakingModule,
   ],
 })
 export class AppModule {}

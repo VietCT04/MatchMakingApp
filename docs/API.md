@@ -796,3 +796,20 @@ PATCH /me/preferences/availability (JWT)
 
 preferenceScore is rule-based and boosts for matching sport/format, preferred venue, and weekly availability overlap; defaults to neutral 50 with no preferences.
 
+
+## Matchmaking APIs (JWT required)
+POST /matchmaking/tickets`n- Create/replace active ticket for current user + sport/format.
+
+POST /matchmaking/search`n- Runs immediate search for current user's active SEARCHING ticket.
+- Returns either { found: true, proposal } or { found: false, message, suggestions }.
+
+GET /matchmaking/tickets/me`n- Returns current user's recent tickets.
+
+GET /matchmaking/proposals/me`n- Returns proposals involving current user.
+
+POST /matchmaking/proposals/:id/accept`n- Accept proposal participant slot for current user.
+- If all participants accepted, creates real Match + MatchParticipant rows and marks proposal CONFIRMED.
+
+POST /matchmaking/proposals/:id/decline`n- Declines proposal and marks proposal DECLINED.
+- Other tickets return to SEARCHING (if not expired) or EXPIRED.
+

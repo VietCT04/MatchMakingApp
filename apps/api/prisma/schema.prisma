@@ -69,6 +69,10 @@ enum NotificationType {
   DISPUTE_CREATED
   REPORT_CREATED
   NO_SHOW_MARKED
+  AUTO_MATCH_FOUND
+  AUTO_MATCH_CONFIRMED
+  AUTO_MATCH_DECLINED
+  AUTO_MATCH_EXPIRED
   SYSTEM
 }
 
@@ -77,6 +81,27 @@ enum PushDevicePlatform {
   ANDROID
   WEB
   UNKNOWN
+}
+
+enum MatchmakingTicketStatus {
+  SEARCHING
+  MATCHED
+  CANCELLED
+  EXPIRED
+}
+
+enum MatchmakingProposalStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+enum MatchmakingProposalParticipantStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 model User {
@@ -114,6 +139,8 @@ model User {
   sportPreferences UserSportPreference[]
   preferredVenues UserPreferredVenue[]
   availabilitySlots UserAvailabilitySlot[]
+  matchmakingTickets MatchmakingTicket[]
+  matchmakingProposalParticipants MatchmakingProposalParticipant[]
 }
 
 model Sport {
@@ -126,6 +153,8 @@ model Sport {
   userRatings   UserSportRating[]
   ratingHistory RatingHistory[]
   userSportPreferences UserSportPreference[]
+  matchmakingTickets MatchmakingTicket[]
+  matchmakingProposals MatchmakingProposal[]
 }
 
 model UserSportRating {
@@ -156,6 +185,8 @@ model Venue {
 
   matches   Match[]
   preferredByUsers UserPreferredVenue[]
+  matchmakingTickets MatchmakingTicket[] @relation("MatchmakingTicketPreferredVenue")
+  matchmakingProposals MatchmakingProposal[]
 }
 
 model UserSportPreference {
@@ -235,6 +266,7 @@ model Match {
   matchNotificationPreferences MatchNotificationPreference[]
   chatReadStates ChatReadState[]
   moderationActions ModerationAction[]
+  matchmakingProposals MatchmakingProposal[] @relation("MatchmakingProposalConfirmedMatch")
 
   @@index([sportId, status, startsAt])
   @@index([venueId, startsAt])
@@ -482,4 +514,70 @@ model ModerationAction {
 
   @@index([moderatorUserId, createdAt])
   @@index([targetUserId, createdAt])
+}
+
+model MatchmakingTicket {
+  id               String                  @id @default(uuid())
+  userId           String
+  sportId          String
+  format           SportFormat
+  latitude         Float?
+  longitude        Float?
+  radiusKm         Float                   @default(5)
+  earliestStart    DateTime
+  latestEnd        DateTime
+  preferredVenueId String?
+  minElo           Int?
+  maxElo           Int?
+  status           MatchmakingTicketStatus @default(SEARCHING)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  expiresAt        DateTime
+
+  user                 User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sport                Sport                           @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  preferredVenue       Venue?                          @relation("MatchmakingTicketPreferredVenue", fields: [preferredVenueId], references: [id], onDelete: SetNull)
+  proposalParticipants MatchmakingProposalParticipant[]
+
+  @@index([sportId, format, status, createdAt])
+  @@index([userId, sportId, format, status])
+}
+
+model MatchmakingProposal {
+  id                String                     @id @default(uuid())
+  sportId           String
+  format            SportFormat
+  venueId           String?
+  proposedStartTime DateTime
+  status            MatchmakingProposalStatus  @default(PENDING)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  confirmedMatchId  String?
+
+  sport          Sport                           @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  venue          Venue?                          @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  confirmedMatch Match?                          @relation("MatchmakingProposalConfirmedMatch", fields: [confirmedMatchId], references: [id], onDelete: SetNull)
+  participants   MatchmakingProposalParticipant[]
+
+  @@index([status, createdAt])
+  @@index([sportId, format, status])
+}
+
+model MatchmakingProposalParticipant {
+  id          String                               @id @default(uuid())
+  proposalId  String
+  userId      String
+  ticketId    String
+  team        Team                                 @default(UNKNOWN)
+  status      MatchmakingProposalParticipantStatus @default(PENDING)
+  createdAt   DateTime                             @default(now())
+  updatedAt   DateTime                             @updatedAt
+  respondedAt DateTime?
+
+  proposal MatchmakingProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket   MatchmakingTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, userId])
+  @@index([userId, status, createdAt])
 }

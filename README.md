@@ -322,3 +322,17 @@ Backend integration coverage for this flow lives in `apps/api/src/matches/match-
 - Mobile includes Profile editing and a Player preferences screen to save sports, venue, and availability signals.
 - Weekly availability is recurring MVP data (dayOfWeek + HH:mm); no calendar sync yet.
 
+
+## Auto Matchmaking (MVP)
+- Added auto matchmaking flow for physical sports:
+  1. Create matchmaking ticket (POST /matchmaking/tickets)
+  2. Run search (POST /matchmaking/search)
+  3. Receive pending proposal
+  4. Accept/decline proposal
+  5. On full acceptance, a real match is created automatically.
+- Matching remains rule-based and deterministic (no AI, no websocket realtime, no background worker).
+- Search expansion by ticket age:
+  - < 5 min: elo tolerance 100, base radius
+  - 5-10 min: elo tolerance 200, radius x1.5
+  - > 10 min: elo tolerance 300, radius x2
+

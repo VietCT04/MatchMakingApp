@@ -333,3 +333,10 @@ Follow-up:
 - Outcome: ranking now combines distance, rating, reliability, preference, time, and slot signals with documented weights.
 - Tradeoff: weekly availability matching is simple (dayOfWeek + HH:mm) and does not yet handle advanced timezone/calendar semantics.
 
+
+## 2026-04-28: Auto matchmaking via proposal flow
+- Decision: use ticket/proposal/accept flow before creating real match.
+- Reason: physical sports require explicit confirmation before committing a game and venue/time.
+- Decision: keep MVP request-driven (no realtime queue worker yet).
+- Reason: simpler rollout and lower operational complexity for early product stage.
+

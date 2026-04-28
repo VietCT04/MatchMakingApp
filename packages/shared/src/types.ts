@@ -60,7 +60,32 @@ export enum NotificationType {
   DISPUTE_CREATED = 'DISPUTE_CREATED',
   REPORT_CREATED = 'REPORT_CREATED',
   NO_SHOW_MARKED = 'NO_SHOW_MARKED',
+  AUTO_MATCH_FOUND = 'AUTO_MATCH_FOUND',
+  AUTO_MATCH_CONFIRMED = 'AUTO_MATCH_CONFIRMED',
+  AUTO_MATCH_DECLINED = 'AUTO_MATCH_DECLINED',
+  AUTO_MATCH_EXPIRED = 'AUTO_MATCH_EXPIRED',
   SYSTEM = 'SYSTEM',
+}
+
+export enum MatchmakingTicketStatus {
+  SEARCHING = 'SEARCHING',
+  MATCHED = 'MATCHED',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+}
+
+export enum MatchmakingProposalStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  DECLINED = 'DECLINED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum MatchmakingProposalParticipantStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
 }
 
 export enum PushDevicePlatform {
@@ -296,6 +321,50 @@ export interface PushDeviceDto {
   lastSeenAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MatchmakingTicketDto {
+  id: string;
+  userId: string;
+  sportId: string;
+  format: SportFormat;
+  latitude: number | null;
+  longitude: number | null;
+  radiusKm: number;
+  earliestStart: string;
+  latestEnd: string;
+  preferredVenueId: string | null;
+  minElo: number | null;
+  maxElo: number | null;
+  status: MatchmakingTicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+export interface MatchmakingProposalParticipantDto {
+  id: string;
+  proposalId: string;
+  userId: string;
+  ticketId: string;
+  team: Team;
+  status: MatchmakingProposalParticipantStatus;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt: string | null;
+}
+
+export interface MatchmakingProposalDto {
+  id: string;
+  sportId: string;
+  format: SportFormat;
+  venueId: string | null;
+  proposedStartTime: string;
+  status: MatchmakingProposalStatus;
+  createdAt: string;
+  updatedAt: string;
+  confirmedMatchId: string | null;
+  participants?: MatchmakingProposalParticipantDto[];
 }
 
 export interface NotificationPreferenceDto {

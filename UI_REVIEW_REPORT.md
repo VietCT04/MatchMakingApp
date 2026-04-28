@@ -647,3 +647,10 @@ This section tracks what has been implemented from this review, and what is stil
 - Added dedicated Player Preferences screen with sections for sports/formats, preferred venues, and weekly availability.
 - Added Discover card signal for Preference fit when ranked response includes itBreakdown.preferenceScore.
 - Not yet done in this slice: avatar upload/file picker UX, advanced availability editor, and calendar integration.
+
+## Update - Auto Matchmaking MVP UI
+- Added Find match screen for creating matchmaking tickets and triggering search.
+- Added Matchmaking proposals screen for accept/decline and confirmed match navigation.
+- Added Discover entry CTA: Find match automatically.
+- UI uses existing app primitives and keeps flow simple for demo/use testing.
+
