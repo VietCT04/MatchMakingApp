@@ -16,6 +16,12 @@ export enum MatchParticipantStatus {
   NO_SHOW = 'NO_SHOW',
 }
 
+export enum CheckInMethod {
+  MANUAL = 'MANUAL',
+  GPS = 'GPS',
+  QR = 'QR',
+}
+
 export enum Team {
   A = 'A',
   B = 'B',
@@ -152,10 +158,31 @@ export interface MatchParticipantDto {
   userId: string;
   status: MatchParticipantStatus;
   team: Team;
+  checkedInAt?: string | null;
+  checkInMethod?: CheckInMethod | null;
+  checkedInLatitude?: number | null;
+  checkedInLongitude?: number | null;
   displayName?: string;
   reliabilityScore?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MatchCheckInStatusDto {
+  matchId: string;
+  checkInOpen: boolean;
+  checkInWindow: {
+    opensAt: string;
+    closesAt: string;
+  };
+  participants: Array<{
+    participantId: string;
+    userId: string;
+    displayName: string;
+    team: Team;
+    status: MatchParticipantStatus;
+    checkedInAt: string | null;
+  }>;
 }
 
 export interface MatchResultDto {

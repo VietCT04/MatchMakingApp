@@ -666,3 +666,9 @@ This section tracks what has been implemented from this review, and what is stil
 - Chat section now supports periodic REST polling while focused plus manual refresh and post-send refresh.
 - Location section now highlights latest proposal state and participant response statuses with clearer required-field guidance.
 
+
+## Update - Match detail attendance UX
+- Added attendance check-in card with check-in window visibility and action states.
+- Added creator view for participant check-in statuses in match detail.
+- No-show action is now hidden/blocked for checked-in participants.
+

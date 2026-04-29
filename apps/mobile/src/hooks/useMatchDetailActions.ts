@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { MatchParticipantStatus, MatchStatus, Team, type MatchWithDetailsDto, type MatchResultDto, type UserDto } from '@sports-matchmaking/shared';
+import { MatchParticipantStatus, MatchStatus, Team, type MatchCheckInStatusDto, type MatchWithDetailsDto, type MatchResultDto, type UserDto } from '@sports-matchmaking/shared';
 import { apiClient } from '../lib/api';
 
 type FeedbackTone = 'success' | 'error';
@@ -19,6 +19,8 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
   const [isMatchMuted, setIsMatchMuted] = useState(false);
   const [muteUntil, setMuteUntil] = useState<string | null>(null);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [checkIns, setCheckIns] = useState<MatchCheckInStatusDto | null>(null);
+  const [checkInsLoading, setCheckInsLoading] = useState(true);
 
   const now = Date.now();
   const participants = match?.participants ?? [];
@@ -63,6 +65,15 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
       match &&
       (match.createdByUserId === user.id || currentUserParticipation),
   );
+  const checkInEntry = checkIns?.participants.find((item) => item.userId === user?.id);
+  const hasCheckedIn = Boolean(checkInEntry?.checkedInAt);
+  const canCheckIn =
+    Boolean(user) &&
+    Boolean(currentParticipant) &&
+    !hasCheckedIn &&
+    Boolean(checkIns?.checkInOpen) &&
+    match?.status !== MatchStatus.CANCELLED &&
+    match?.status !== MatchStatus.COMPLETED;
 
   const setErrorFeedback = useCallback((message: string) => {
     setFeedback({ tone: 'error', message });
@@ -187,19 +198,27 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
       setIsMatchMuted(false);
       setMuteUntil(null);
       setChatUnreadCount(0);
+      setCheckIns(null);
+      setCheckInsLoading(false);
       return;
     }
 
+    setCheckInsLoading(true);
     try {
       const [matchPreference, unread] = await Promise.all([
         apiClient.getMatchNotificationPreference(matchId),
         canReadChat ? apiClient.getChatUnreadCount(matchId) : Promise.resolve({ count: 0 }),
       ]);
+      const checkInStatus = await apiClient.getMatchCheckIns(matchId);
       setIsMatchMuted(matchPreference.muted);
       setMuteUntil(matchPreference.muteUntil ?? null);
       setChatUnreadCount(unread.count);
+      setCheckIns(checkInStatus);
     } catch {
       // Keep core match detail usable even if preference/read-state fetch fails.
+      setCheckIns(null);
+    } finally {
+      setCheckInsLoading(false);
     }
   }, [canReadChat, matchId, user]);
 
@@ -207,8 +226,12 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
     if (!canMarkNoShow || participantUserId === user?.id) {
       return false;
     }
+    const checkIn = checkIns?.participants.find((item) => item.userId === participantUserId);
+    if (checkIn?.checkedInAt) {
+      return false;
+    }
     return participantStatus === MatchParticipantStatus.JOINED;
-  }, [canMarkNoShow, user?.id]);
+  }, [canMarkNoShow, checkIns?.participants, user?.id]);
 
   return {
     busy,
@@ -231,6 +254,10 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
     canReport,
     canMarkNoShow,
     canReadChat,
+    canCheckIn,
+    hasCheckedIn,
+    checkIns,
+    checkInsLoading,
     setFeedback,
     runAction,
     submitResult,
@@ -240,6 +267,17 @@ export function useMatchDetailActions({ matchId, match, user, refresh }: UseMatc
     markNoShow,
     setMatchMute,
     loadNotificationControls,
+    checkInEntry,
+    checkInNow: async () => {
+      if (!matchId) {
+        return;
+      }
+      await runAction(
+        () => apiClient.checkInToMatch(matchId),
+        'Check-in confirmed.',
+      );
+      await loadNotificationControls();
+    },
     canMarkNoShowForParticipant,
   };
 }

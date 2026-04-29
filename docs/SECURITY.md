@@ -72,3 +72,9 @@
 ## Related Docs
 - [Contributing](./CONTRIBUTING.md)
 - [Roadmap](./ROADMAP.md)
+
+## Attendance check-in access control
+- Check-in endpoint is JWT-protected and bound to current authenticated user identity.
+- Check-in status endpoint is restricted to creator/participants/moderators/admins for the target match.
+- No-show marking now includes a fairness guard: checked-in participants cannot be marked no-show.
+

@@ -354,3 +354,11 @@ pnpm typecheck
 - Proposal response now includes participant user displayName and reliabilityScore to avoid raw ID-only rendering.
 - Proposal detail UI now polls chat on focus interval and provides manual refresh/action feedback.
 
+
+## 2026-04-28 - Attendance check-in MVP
+- Added manual attendance check-in on MatchParticipant (checkedInAt, checkInMethod, optional coordinates fields for future GPS/QR).
+- Added POST /matches/:id/check-in with ±60 minute window around startsAt.
+- Added GET /matches/:id/check-ins for creator/participant/admin/moderator visibility.
+- Updated no-show rule: checked-in participants cannot be marked no-show.
+- Match detail now includes check-in card, window visibility, check-in action, and creator view of participant check-in statuses.
+

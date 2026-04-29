@@ -10,6 +10,8 @@ describe('MatchesController auth identity handling', () => {
       createForUser: jest.fn(),
       joinForUser: jest.fn(),
       leaveForUser: jest.fn(),
+      checkInForUser: jest.fn(),
+      getCheckInsForUser: jest.fn(),
       submitResultForUser: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
@@ -88,5 +90,17 @@ describe('MatchesController auth identity handling', () => {
     controller.remove(authUser, 'match-id');
 
     expect(matchesService.removeForUser).toHaveBeenCalledWith('match-id', authUser);
+  });
+
+  it('checks in as the JWT user', () => {
+    const { controller, matchesService } = createController();
+    controller.checkIn(authUser, 'match-id');
+    expect(matchesService.checkInForUser).toHaveBeenCalledWith('match-id', authUser.id);
+  });
+
+  it('gets check-ins with JWT user context', () => {
+    const { controller, matchesService } = createController();
+    controller.getCheckIns(authUser, 'match-id');
+    expect(matchesService.getCheckInsForUser).toHaveBeenCalledWith('match-id', authUser);
   });
 });

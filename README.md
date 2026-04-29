@@ -144,3 +144,10 @@ For exact request/response shapes, see [docs/API.md](./docs/API.md).
 - Push delivery analytics/observability
 - Payments and court booking integration
 - Advanced ranking and recommendation improvements
+
+## Attendance check-in (MVP)
+- Joined participants can manually check in between 60 minutes before and 60 minutes after match start.
+- Check-in is separate from result verification and Elo updates.
+- Checked-in participants cannot be marked as no-show.
+- Current MVP method is MANUAL; GPS/QR fields exist for future extension.
+

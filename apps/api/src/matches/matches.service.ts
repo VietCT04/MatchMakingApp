@@ -50,6 +50,14 @@ export class MatchesService {
     return this.participationService.leave(matchId, userId);
   }
 
+  checkInForUser(matchId: string, userId: string) {
+    return this.participationService.checkIn(matchId, userId);
+  }
+
+  getCheckInsForUser(matchId: string, user: AuthUser) {
+    return this.participationService.getCheckIns(matchId, user.id, user.role);
+  }
+
   markNoShow(matchId: string, participantId: string, actorUserId: string) {
     return this.participationService.markNoShow(matchId, participantId, actorUserId);
   }

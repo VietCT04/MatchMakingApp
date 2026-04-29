@@ -346,3 +346,9 @@ Follow-up:
 - Reason: physical games need explicit agreement on real-world location before creating a match.
 - Decision: keep negotiation request-driven (REST polling), no websocket or background worker in MVP.
 
+
+## 2026-04-28: Manual attendance check-in before no-show actions
+- Decision: add bounded-time manual check-in around match start and prevent no-show marking for checked-in participants.
+- Reason: improves fairness in trust/reliability signals without requiring GPS/QR infrastructure in MVP.
+- Tradeoff: manual self-check-in can be abused; stronger verification (GPS/QR) is planned later.
+

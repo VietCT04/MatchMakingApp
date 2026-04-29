@@ -49,6 +49,11 @@ export default function MatchDetailScreen() {
     canDispute,
     canMarkNoShow: canMarkNoShowBase,
     canReadChat,
+    canCheckIn,
+    hasCheckedIn,
+    checkIns,
+    checkInsLoading,
+    checkInEntry,
     runAction,
     submitResult,
     verifyResult,
@@ -56,6 +61,7 @@ export default function MatchDetailScreen() {
     reportUser,
     markNoShow,
     setMatchMute,
+    checkInNow,
     loadNotificationControls,
     canMarkNoShowForParticipant,
   } = useMatchDetailActions({
@@ -304,6 +310,51 @@ export default function MatchDetailScreen() {
             onDisputeResult={() => void disputeResult(pendingResult, disputeReason)}
             busy={busy}
           />
+
+          <AppCard>
+            <Text style={styles.sectionTitle}>Attendance check-in</Text>
+            {checkIns ? (
+              <>
+                <Text style={styles.sectionBody}>Check-in opens at {new Date(checkIns.checkInWindow.opensAt).toLocaleString()}</Text>
+                <Text style={styles.sectionBody}>Check-in closes at {new Date(checkIns.checkInWindow.closesAt).toLocaleString()}</Text>
+                {hasCheckedIn ? (
+                  <Text style={styles.sectionBody}>
+                    You checked in at {checkInEntry?.checkedInAt ? new Date(checkInEntry.checkedInAt).toLocaleString() : '-'}.
+                  </Text>
+                ) : (
+                  <Text style={styles.sectionBody}>
+                    {canCheckIn
+                      ? 'You can check in now.'
+                      : !currentParticipant
+                        ? 'Only joined participants can check in.'
+                        : match.status === MatchStatus.CANCELLED || match.status === MatchStatus.COMPLETED
+                          ? 'Check-in unavailable for cancelled/completed matches.'
+                          : 'Check-in is currently outside the allowed window.'}
+                  </Text>
+                )}
+                <AppButton
+                  variant="secondary"
+                  loading={busy}
+                  disabled={!canCheckIn}
+                  onPress={() => void checkInNow()}
+                >
+                  {hasCheckedIn ? 'Checked in' : 'Check in'}
+                </AppButton>
+                {user && user.id === match.createdByUserId ? (
+                  <>
+                    <Text style={styles.sectionTitle}>Participant check-ins</Text>
+                    {checkIns.participants.map((participant) => (
+                      <Text key={participant.participantId} style={styles.sectionBody}>
+                        {participant.displayName}: {participant.checkedInAt ? `checked in at ${new Date(participant.checkedInAt).toLocaleTimeString()}` : 'not checked in'}
+                      </Text>
+                    ))}
+                  </>
+                ) : null}
+              </>
+            ) : (
+              checkInsLoading ? <LoadingState message="Loading check-in status..." /> : <Text style={styles.sectionBody}>Check-in status unavailable.</Text>
+            )}
+          </AppCard>
         </>
       ) : null}
     </Screen>

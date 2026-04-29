@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
-import { MatchParticipantStatus, MatchStatus } from '@prisma/client';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { MatchParticipantStatus, MatchStatus, UserRole } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
 import { MatchLifecycleService } from './match-lifecycle.service';
 import { MatchParticipationService } from './match-participation.service';
@@ -208,6 +208,164 @@ describe('Matches services', () => {
       'Marked as no-show',
       'You were marked as no-show for Saturday Doubles',
       expect.objectContaining({ matchId: 'match-1' }),
+    );
+  });
+
+  it('joined participant can check in within window', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const { participationService } = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    });
+
+    const result = await participationService.checkIn('match-1', 'user-1');
+    expect(result.checkInMethod).toBe('MANUAL');
+  });
+
+  it('non participant cannot check in', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const { participationService } = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt,
+      maxPlayers: 4,
+      participants: [],
+    });
+
+    await expect(participationService.checkIn('match-1', 'user-1')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('participant cannot check in too early or too late', async () => {
+    const tooEarlyStart = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const earlyService = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt: tooEarlyStart,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    }).participationService;
+    await expect(earlyService.checkIn('match-1', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+
+    const tooLateStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const lateService = createParticipationService({
+      id: 'match-2',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt: tooLateStart,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    }).participationService;
+    await expect(lateService.checkIn('match-2', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('cancelled and completed match block check-in', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const cancelledService = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.CANCELLED,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    }).participationService;
+    await expect(cancelledService.checkIn('match-1', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+
+    const completedService = createParticipationService({
+      id: 'match-2',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.COMPLETED,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    }).participationService;
+    await expect(completedService.checkIn('match-2', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('duplicate check-in returns existing check-in state', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const checkedInAt = new Date(Date.now() - 5 * 60 * 1000);
+    const { participationService } = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED, checkedInAt, checkInMethod: 'MANUAL' }],
+    });
+
+    const result = await participationService.checkIn('match-1', 'user-1');
+    expect(result.checkedInAt).toEqual(checkedInAt);
+  });
+
+  it('creator and participant can view check-ins, non-participant cannot', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const baseMatch = {
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    };
+    const creatorService = createParticipationService(baseMatch).participationService;
+    const participantService = createParticipationService(baseMatch).participationService;
+    const outsiderService = createParticipationService(baseMatch).participationService;
+
+    await expect(creatorService.getCheckIns('match-1', 'creator-1', UserRole.USER)).resolves.toBeDefined();
+    await expect(participantService.getCheckIns('match-1', 'user-1', UserRole.USER)).resolves.toBeDefined();
+    await expect(outsiderService.getCheckIns('match-1', 'user-x', UserRole.USER)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('checked-in participant cannot be marked no-show', async () => {
+    const startedAt = new Date(Date.now() - 60 * 60 * 1000);
+    const { participationService } = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt: startedAt,
+      maxPlayers: 4,
+      participants: [
+        { id: 'participant-2', userId: 'user-2', status: MatchParticipantStatus.JOINED, checkedInAt: new Date() },
+      ],
+    });
+
+    await expect(participationService.markNoShow('match-1', 'participant-2', 'creator-1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('check-in notification is created for match creator', async () => {
+    const startsAt = new Date(Date.now() + 30 * 60 * 1000);
+    const { participationService, notificationsService } = createParticipationService({
+      id: 'match-1',
+      title: 'Saturday Doubles',
+      createdByUserId: 'creator-1',
+      status: MatchStatus.OPEN,
+      startsAt,
+      maxPlayers: 4,
+      participants: [{ id: 'participant-1', userId: 'user-1', status: MatchParticipantStatus.JOINED }],
+    });
+
+    await participationService.checkIn('match-1', 'user-1');
+    expect(notificationsService.createNotification).toHaveBeenCalledWith(
+      'creator-1',
+      'SYSTEM',
+      'Player checked in',
+      'Player One checked in for Saturday Doubles',
+      expect.objectContaining({ matchId: 'match-1', userId: 'user-1' }),
     );
   });
 });

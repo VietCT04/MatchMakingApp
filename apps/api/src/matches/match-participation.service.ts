@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { MatchParticipantStatus, MatchStatus, NotificationType } from '@prisma/client';
+import { CheckInMethod, MatchParticipantStatus, MatchStatus, NotificationType, UserRole } from '@prisma/client';
 import { Team } from '@sports-matchmaking/shared';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -157,6 +157,9 @@ export class MatchParticipationService {
     if (participant.status !== MatchParticipantStatus.JOINED) {
       throw new BadRequestException('Only joined participants can be marked as no-show');
     }
+    if (participant.checkedInAt) {
+      throw new BadRequestException('Participant has already checked in.');
+    }
 
     const updatedParticipant = await this.prisma.$transaction(async (tx) => {
       const updatedParticipant = await tx.matchParticipant.update({
@@ -183,5 +186,110 @@ export class MatchParticipationService {
     }
 
     return updatedParticipant;
+  }
+
+  async checkIn(matchId: string, userId: string) {
+    const match = await this.queryService.findOne(matchId);
+    if (match.status === MatchStatus.CANCELLED || match.status === MatchStatus.COMPLETED) {
+      throw new BadRequestException('Cannot check in for cancelled or completed match');
+    }
+
+    const now = new Date();
+    const opensAt = new Date(match.startsAt.getTime() - 60 * 60 * 1000);
+    const closesAt = new Date(match.startsAt.getTime() + 60 * 60 * 1000);
+    if (now < opensAt) {
+      throw new BadRequestException('Check-in has not opened yet');
+    }
+    if (now > closesAt) {
+      throw new BadRequestException('Check-in window is closed');
+    }
+
+    const participant = match.participants.find((item) => item.userId === userId);
+    if (!participant || participant.status !== MatchParticipantStatus.JOINED) {
+      throw new ForbiddenException('Only joined participants can check in');
+    }
+    if (participant.checkedInAt) {
+      return {
+        matchId,
+        userId,
+        checkedInAt: participant.checkedInAt,
+        checkInMethod: participant.checkInMethod ?? CheckInMethod.MANUAL,
+      };
+    }
+
+    const checkedInAt = new Date();
+    const updated = await this.prisma.matchParticipant.update({
+      where: { id: participant.id },
+      data: {
+        checkedInAt,
+        checkInMethod: CheckInMethod.MANUAL,
+      },
+      select: {
+        userId: true,
+        checkedInAt: true,
+        checkInMethod: true,
+      },
+    });
+
+    if (match.createdByUserId !== userId) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { displayName: true },
+        });
+        const displayName = user?.displayName ?? 'A player';
+        await this.notificationsService.createNotification(
+          match.createdByUserId,
+          NotificationType.SYSTEM,
+          'Player checked in',
+          `${displayName} checked in for ${match.title}`,
+          {
+            matchId,
+            userId,
+            dedupeKey: `match:${matchId}:check-in:${userId}`,
+          },
+        );
+      } catch (error) {
+        this.logger.warn(`Failed to create check-in notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+      }
+    }
+
+    return {
+      matchId,
+      userId: updated.userId,
+      checkedInAt: updated.checkedInAt,
+      checkInMethod: updated.checkInMethod ?? CheckInMethod.MANUAL,
+    };
+  }
+
+  async getCheckIns(matchId: string, actorUserId: string, actorRole: UserRole) {
+    const match = await this.queryService.findOne(matchId);
+    const isCreator = match.createdByUserId === actorUserId;
+    const isParticipant = match.participants.some((item) => item.userId === actorUserId);
+    const isPrivileged = actorRole === UserRole.ADMIN || actorRole === UserRole.MODERATOR;
+    if (!isCreator && !isParticipant && !isPrivileged) {
+      throw new ForbiddenException('Not allowed to view match check-ins');
+    }
+
+    const opensAt = new Date(match.startsAt.getTime() - 60 * 60 * 1000);
+    const closesAt = new Date(match.startsAt.getTime() + 60 * 60 * 1000);
+    const now = Date.now();
+
+    return {
+      matchId: match.id,
+      checkInOpen: now >= opensAt.getTime() && now <= closesAt.getTime(),
+      checkInWindow: {
+        opensAt,
+        closesAt,
+      },
+      participants: match.participants.map((participant) => ({
+        participantId: participant.id,
+        userId: participant.userId,
+        displayName: participant.displayName?.trim() || `Player ${participant.userId.slice(0, 8)}`,
+        team: participant.team,
+        status: participant.status,
+        checkedInAt: participant.checkedInAt ?? null,
+      })),
+    };
   }
 }

@@ -270,3 +270,9 @@ pnpm prisma:seed
 - MatchmakingLocationProposalResponse for participant-level accept/decline responses.
 - Venue now supports optional googleMapsUrl and googlePlaceId for mapping context and venue reuse.
 
+
+## Match attendance check-in schema
+- Added enum CheckInMethod (MANUAL, GPS, QR).
+- Added MatchParticipant fields:
+  - checkedInAt DateTime?`n  - checkInMethod CheckInMethod?`n  - checkedInLatitude Float?`n  - checkedInLongitude Float?`n- MVP uses MANUAL only; GPS/QR fields are future-proof.
+

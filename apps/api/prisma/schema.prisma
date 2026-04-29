@@ -115,6 +115,12 @@ enum MatchmakingLocationProposalStatus {
   CANCELLED
 }
 
+enum CheckInMethod {
+  MANUAL
+  GPS
+  QR
+}
+
 model User {
   id               String            @id @default(uuid())
   email            String            @unique
@@ -393,6 +399,10 @@ model MatchParticipant {
   userId    String
   status    MatchParticipantStatus
   team      Team
+  checkedInAt DateTime?
+  checkInMethod CheckInMethod?
+  checkedInLatitude Float?
+  checkedInLongitude Float?
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
 

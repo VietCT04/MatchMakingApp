@@ -8,6 +8,7 @@ import type {
   MatchParticipantDto,
   MatchResultDisputeDto,
   MatchResultDto,
+  MatchCheckInStatusDto,
   MatchWithDetailsDto,
   MatchmakingProposalDto,
   MatchmakingLocationProposalDto,
@@ -318,6 +319,22 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({}),
     });
+  },
+
+  checkInToMatch(matchId: string): Promise<{
+    matchId: string;
+    userId: string;
+    checkedInAt: string;
+    checkInMethod: 'MANUAL' | 'GPS' | 'QR';
+  }> {
+    return request(`/matches/${matchId}/check-in`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  getMatchCheckIns(matchId: string): Promise<MatchCheckInStatusDto> {
+    return request(`/matches/${matchId}/check-ins`);
   },
 
   disputeMatchResult(matchId: string, resultId: string, reason: string): Promise<MatchResultDisputeDto> {

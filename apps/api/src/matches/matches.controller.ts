@@ -60,6 +60,18 @@ export class MatchesController {
     return this.matchesService.leaveForUser(id, user.id);
   }
 
+  @Post(':id/check-in')
+  @UseGuards(JwtAuthGuard)
+  checkIn(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.matchesService.checkInForUser(id, user.id);
+  }
+
+  @Get(':id/check-ins')
+  @UseGuards(JwtAuthGuard)
+  getCheckIns(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.matchesService.getCheckInsForUser(id, user);
+  }
+
   @Post(':id/results')
   @UseGuards(JwtAuthGuard)
   submitResult(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SubmitResultDto) {

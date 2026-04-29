@@ -826,3 +826,18 @@ GET /matchmaking/proposals/:id/messages`nPOST /matchmaking/proposals/:id/message
 - Real match creation only happens after a location proposal reaches unanimous ACCEPTED responses.
 - Proposal chat and location proposal endpoints enforce participant-only access and PENDING-only writes.
 
+
+## Match attendance check-in
+POST /matches/:id/check-in (JWT)
+- Joined participant only.
+- Match must not be CANCELLED or COMPLETED.
+- Window: opens 60 minutes before startsAt, closes 60 minutes after startsAt.
+- Duplicate check-in returns existing check-in state.
+
+GET /matches/:id/check-ins (JWT)
+- Allowed: match creator, participants, ADMIN, MODERATOR.
+- Returns check-in window state and participant check-in timestamps.
+
+No-show interaction:
+- POST /matches/:id/participants/:participantId/no-show now rejects checked-in participants with Participant has already checked in.
+
